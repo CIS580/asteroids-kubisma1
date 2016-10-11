@@ -4,11 +4,14 @@
 /* Classes */
 const Game = require('./game.js');
 const Player = require('./player.js');
+const EntityManager = require('./entity-manager.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
-var player = new Player({x: canvas.width/2, y: canvas.height/2}, canvas);
+var entityManager = new EntityManager(canvas);
+var player = new Player({x: canvas.width/2, y: canvas.height/2}, canvas, entityManager);
+entityManager.addPlayer(player);
 
 /**
  * @function masterLoop
@@ -31,7 +34,7 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-  player.update(elapsedTime);
+  entityManager.update(elapsedTime);
   // TODO: Update the game objects
 }
 
@@ -45,10 +48,73 @@ function update(elapsedTime) {
 function render(elapsedTime, ctx) {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  player.render(elapsedTime, ctx);
+  entityManager.render(elapsedTime, ctx);
 }
 
-},{"./game.js":2,"./player.js":3}],2:[function(require,module,exports){
+},{"./entity-manager.js":2,"./game.js":3,"./player.js":4}],2:[function(require,module,exports){
+"use strict";
+
+const TOLERANCE = 10;
+
+/**
+ * @module exports the EntityManager class
+ */
+module.exports = exports = EntityManager;
+
+
+function EntityManager(canvas) {
+  this.worldWidth = canvas.width;
+  this.worldHeight = canvas.height;
+  this.player = undefined;
+  this.shots = [];
+  this.asteroids = [];
+}
+
+EntityManager.prototype.addPlayer = function(player) {
+  this.player = player;
+}
+
+EntityManager.prototype.addShot = function(shot) {
+  this.shots.push(shot);
+}
+
+EntityManager.prototype.addAsteroid = function(asteroid) {
+  this.asteroids.push(asteroid);
+}
+
+function removeInvalidShots() {
+  var self = this;
+  this.shots = this.shots.filter(function(shot){
+    return shot.position.x + TOLERANCE >= 0 &&
+           shot.position.y + TOLERANCE >= 0 &&
+           shot.position.x - TOLERANCE <= self.worldWidth &&
+           shot.position.y - TOLERANCE <= self.worldHeight
+  });
+}
+
+EntityManager.prototype.update = function(elapsedTime) {
+  removeInvalidShots.call(this);
+
+  this.player.update(elapsedTime);
+  this.shots.forEach(function(shot) {
+    shot.update(elapsedTime);
+  });
+  this.asteroids.forEach(function(asteroid) {
+    asteroid.update(elapsedTime);
+  });
+}
+
+EntityManager.prototype.render = function(elapsedTime, ctx) {
+  this.player.render(elapsedTime, ctx);
+  this.shots.forEach(function(shot) {
+    shot.render(elapsedTime, ctx);
+  });
+  this.asteroids.forEach(function(asteroid) {
+    asteroid.render(elapsedTime, ctx);
+  });
+}
+
+},{}],3:[function(require,module,exports){
 "use strict";
 
 /**
@@ -106,10 +172,14 @@ Game.prototype.loop = function(newTime) {
   this.frontCtx.drawImage(this.backBuffer, 0, 0);
 }
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 "use strict";
 
 const MS_PER_FRAME = 1000/8;
+const MAX_VELOCITY = 3;
+
+/* Classes */
+const Shot = require('./shot.js');
 
 /**
  * @module exports the Player class
@@ -121,7 +191,7 @@ module.exports = exports = Player;
  * Creates a new player object
  * @param {Postition} position object specifying an x and y
  */
-function Player(position, canvas) {
+function Player(position, canvas, entityManager) {
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
   this.state = "idle";
@@ -136,8 +206,11 @@ function Player(position, canvas) {
   this.angle = 0;
   this.radius  = 64;
   this.thrusting = false;
+  this.shooting = false;
   this.steerLeft = false;
   this.steerRight = false;
+  this.timer = 0;
+  this.entityManager = entityManager;
 
   var self = this;
   window.onkeydown = function(event) {
@@ -153,6 +226,9 @@ function Player(position, canvas) {
       case 'ArrowRight': // right
       case 'd':
         self.steerRight = true;
+        break;
+      case ' ': // shoot
+        self.shooting = true;
         break;
     }
   }
@@ -171,6 +247,9 @@ function Player(position, canvas) {
       case 'd':
         self.steerRight = false;
         break;
+      case ' ': // shoot
+        self.shooting = false;
+        break;
     }
   }
 }
@@ -182,9 +261,16 @@ function Player(position, canvas) {
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Player.prototype.update = function(time) {
+
+  this.timer += time;
+  if(this.shooting && this.timer > MS_PER_FRAME) {
+    this.timer = 0;
+    this.entityManager.addShot(new Shot(this.position, this.angle));
+  }
+
   // Apply angular velocity
   if(this.steerLeft) {
-    this.angle += time * 0.005;
+    this.angle += 0.1;
   }
   if(this.steerRight) {
     this.angle -= 0.1;
@@ -197,6 +283,12 @@ Player.prototype.update = function(time) {
     }
     this.velocity.x -= acceleration.x;
     this.velocity.y -= acceleration.y;
+
+    if(this.velocity.x > MAX_VELOCITY) this.velocity.x = MAX_VELOCITY;
+    else if(this.velocity.x < -1 * MAX_VELOCITY) this.velocity.x = -1 * MAX_VELOCITY;
+
+    if(this.velocity.y > MAX_VELOCITY) this.velocity.y = MAX_VELOCITY;
+    else if(this.velocity.y < -1 * MAX_VELOCITY) this.velocity.y = -1 * MAX_VELOCITY;
   }
   // Apply velocity
   this.position.x += this.velocity.x;
@@ -238,6 +330,63 @@ Player.prototype.render = function(time, ctx) {
     ctx.strokeStyle = 'orange';
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+},{"./shot.js":5}],5:[function(require,module,exports){
+"use strict";
+
+const MAX_VELOCITY = 5;
+
+/**
+ * @module exports the Shot class
+ */
+module.exports = exports = Shot;
+
+function Shot(position, angle) {
+  this.position = {
+    x: position.x,
+    y: position.y
+  };
+  this.velocity = {
+    x: Math.sin(angle) * MAX_VELOCITY,
+    y: Math.cos(angle) * MAX_VELOCITY
+  }
+  this.angle = angle;
+  this.radius  = 2;
+}
+
+/**
+ * @function updates the shot object
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ */
+Shot.prototype.update = function(time) {
+  // Apply velocity
+  this.position.x -= this.velocity.x;
+  this.position.y -= this.velocity.y;
+}
+
+/**
+ * @function renders the shot into the provided context
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ * {CanvasRenderingContext2D} ctx the context to render into
+ */
+Shot.prototype.render = function(time, ctx) {
+  ctx.save();
+
+  // Draw shot
+  ctx.translate(this.position.x, this.position.y);
+  ctx.rotate(-this.angle);
+  ctx.beginPath();
+  ctx.moveTo(-2, 0);
+  ctx.lineTo(-2, 7);
+  ctx.lineTo(2, 7);
+  ctx.lineTo(2, 0);
+  ctx.closePath();
+  ctx.fillStyle = '#3fdbff';
+  ctx.fill();
+
+  // Draw engine thrust
   ctx.restore();
 }
 
