@@ -15,6 +15,8 @@ module.exports = exports = Player;
  * @constructor Player
  * Creates a new player object
  * @param {Postition} position object specifying an x and y
+ * @param {canvasDOMElement} canvas world size
+ * @param {object} entityManager all entities maintainer
  */
 function Player(position, canvas, entityManager) {
   this.worldWidth = canvas.width;
@@ -79,10 +81,8 @@ function Player(position, canvas, entityManager) {
   }
 }
 
-
-
 /**
- * @function updates the player object
+ * @function update updates the player object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Player.prototype.update = function(time) {

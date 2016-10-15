@@ -5,6 +5,7 @@
 const Game = require('./game.js');
 const Player = require('./player.js');
 const EntityManager = require('./entity-manager.js');
+const Asteroid = require('./asteroid.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
@@ -12,6 +13,34 @@ var game = new Game(canvas, update, render);
 var entityManager = new EntityManager(canvas);
 var player = new Player({x: canvas.width/2, y: canvas.height/2}, canvas, entityManager);
 entityManager.addPlayer(player);
+
+var level = 1;
+var score = 0;
+
+
+function generatePosition() {
+  return {
+    x: Math.floor(Math.random() * canvas.width + 1),
+    y: Math.floor(Math.random() * canvas.height + 1)
+  }
+}
+
+function generateAsteroids(level) {
+
+  for(var i = 0; i < 4 + Math.floor(level * 1/4); i++) {
+    entityManager.addAsteroid(new Asteroid.LargeAsteroid(generatePosition(),canvas));
+  }
+
+  for(var j = 0; j < 3 + Math.floor(level * 1/3); j++) {
+    entityManager.addAsteroid(new Asteroid.MediumAsteroid(generatePosition(),canvas));
+  }
+
+  for(var k = 0; k < 3 + Math.floor(level * 1/2); k++) {
+    entityManager.addAsteroid(new Asteroid.SmallAsteroid(generatePosition(),canvas));
+  }
+
+}
+generateAsteroids(level);
 
 /**
  * @function masterLoop
@@ -51,7 +80,209 @@ function render(elapsedTime, ctx) {
   entityManager.render(elapsedTime, ctx);
 }
 
-},{"./entity-manager.js":2,"./game.js":3,"./player.js":4}],2:[function(require,module,exports){
+},{"./asteroid.js":2,"./entity-manager.js":3,"./game.js":4,"./player.js":5}],2:[function(require,module,exports){
+"use strict";
+
+const LARGE_VELOCITY = 2;
+const MEDIUM_VELOCITY = 1.5;
+const SMALL_VELOCITY = 0.5;
+const LARGE_RADIUS = 20;
+const MEDIUM_RADIUS = 15;
+const SMALL_RADIUS = 10;
+
+/**
+ * @module exports the Asteroid base class
+ */
+module.exports = exports = {
+  LargeAsteroid: LargeAsteroid,
+  MediumAsteroid: MediumAsteroid,
+  SmallAsteroid: SmallAsteroid
+};
+
+/**
+ * @constructor Asteroid
+ * Creates a new asteroid object
+ * @param {Postition} position object specifying an x and y
+ * @param {canvasDOMElement} canvas world size
+ */
+function Asteroid(position, canvas) {
+  this.position = {
+    x: position.x,
+    y: position.y
+  };
+  this.angle = Math.random() * 2 - 1;
+  this.worldWidth = canvas.width;
+  this.worldHeight = canvas.height;
+}
+
+/**
+ * @function updates the asteroid object
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ */
+Asteroid.prototype.update = function(time) {
+  // Apply velocity
+  this.position.x -= this.velocity.x;
+  this.position.y -= this.velocity.y;
+
+  // Wrap around the screen
+  if(this.position.x < 0) this.position.x += this.worldWidth;
+  if(this.position.x > this.worldWidth) this.position.x -= this.worldWidth;
+  if(this.position.y < 0) this.position.y += this.worldHeight;
+  if(this.position.y > this.worldHeight) this.position.y -= this.worldHeight;
+}
+
+/**
+  * @function calculateVelocity
+  * calculates a velocity based on asteroids angle and max velocity
+  * @param {Float} angle
+  * @param {Float} maxVelocity max speed of an asteroid
+  */
+function calculateVelocity(angle, maxVelocity) {
+  return {
+    x: Math.sin(angle) * maxVelocity,
+    y: Math.cos(angle) * maxVelocity
+  }
+}
+
+/**
+ * @constructor LargeAsteroid
+ * Creates a new large asteroid object
+ * @param {Postition} position object specifying an x and y
+ * @param {canvasDOMElement} canvas world size
+ */
+function LargeAsteroid(position, canvas) {
+  Asteroid.call(this, position, canvas);
+
+  this.radius = LARGE_RADIUS;
+  this.velocity = calculateVelocity(this.angle, LARGE_VELOCITY);
+}
+
+/**
+ * @function updates the large asteroid object
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ */
+LargeAsteroid.prototype.update = function(time) {
+  Asteroid.prototype.update.call(this, time);
+  this.angle -= 0.08;
+}
+
+/**
+ * @function renders the large asteroid object into the provided context
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ * {CanvasRenderingContext2D} ctx the context to render into
+ */
+LargeAsteroid.prototype.render = function(time, ctx) {
+  ctx.save();
+
+  // Draw a large asteroid
+  ctx.translate(this.position.x, this.position.y);
+  ctx.rotate(-this.angle);
+  ctx.beginPath();
+  ctx.moveTo(0,-LARGE_RADIUS);
+  ctx.lineTo(LARGE_RADIUS,-LARGE_RADIUS);
+  ctx.lineTo(LARGE_RADIUS,LARGE_RADIUS);
+  ctx.lineTo(-LARGE_RADIUS,LARGE_RADIUS);
+  ctx.lineTo(-LARGE_RADIUS,-LARGE_RADIUS);
+  ctx.closePath();
+  ctx.strokeStyle = '#C90018';
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * @constructor MediumAsteroid
+ * Creates a new medium asteroid object
+ * @param {Postition} position object specifying an x and y
+ * @param {canvasDOMElement} canvas world size
+ */
+function MediumAsteroid(position, canvas) {
+  Asteroid.call(this, position, canvas);
+
+  this.radius = MEDIUM_RADIUS;
+  this.velocity = calculateVelocity(this.angle, MEDIUM_VELOCITY);
+}
+
+/**
+ * @function updates the medium asteroid object
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ */
+MediumAsteroid.prototype.update = function(time) {
+  Asteroid.prototype.update.call(this, time);
+  this.angle += 0.02;
+}
+
+/**
+ * @function renders the medium asteroid object into the provided context
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ * {CanvasRenderingContext2D} ctx the context to render into
+ */
+MediumAsteroid.prototype.render = function(time, ctx) {
+  ctx.save();
+
+  // Draw a medium asteroid
+  ctx.translate(this.position.x, this.position.y);
+  ctx.rotate(-this.angle);
+  ctx.beginPath();
+  ctx.moveTo(0,-MEDIUM_RADIUS);
+  ctx.lineTo(MEDIUM_RADIUS,-MEDIUM_RADIUS);
+  ctx.lineTo(MEDIUM_RADIUS,MEDIUM_RADIUS);
+  ctx.lineTo(-MEDIUM_RADIUS,MEDIUM_RADIUS);
+  ctx.lineTo(-MEDIUM_RADIUS,-MEDIUM_RADIUS);
+  ctx.closePath();
+  ctx.strokeStyle = '#C90018';
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * @constructor SmallAsteroid
+ * Creates a new small asteroid object
+ * @param {Postition} position object specifying an x and y
+ * @param {canvasDOMElement} canvas world size
+ */
+function SmallAsteroid(position, canvas) {
+  Asteroid.call(this, position, canvas);
+
+  this.radius = SMALL_RADIUS;
+  this.velocity = calculateVelocity(this.angle, SMALL_VELOCITY);
+}
+
+/**
+ * @function updates the small asteroid object
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ */
+SmallAsteroid.prototype.update = function(time) {
+  Asteroid.prototype.update.call(this, time);
+  this.angle -= 0.009;
+}
+
+/**
+ * @function renders the small asteroid into the provided context
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ * {CanvasRenderingContext2D} ctx the context to render into
+ */
+SmallAsteroid.prototype.render = function(time, ctx) {
+  ctx.save();
+
+  // Draw a medium asteroid
+  ctx.translate(this.position.x, this.position.y);
+  ctx.rotate(-this.angle);
+  ctx.beginPath();
+  ctx.moveTo(0,-SMALL_RADIUS);
+  ctx.lineTo(SMALL_RADIUS,-SMALL_RADIUS);
+  ctx.lineTo(SMALL_RADIUS,SMALL_RADIUS);
+  ctx.lineTo(-SMALL_RADIUS,SMALL_RADIUS);
+  ctx.lineTo(-SMALL_RADIUS,-SMALL_RADIUS);
+  ctx.closePath();
+  ctx.strokeStyle = '#C90018';
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+},{}],3:[function(require,module,exports){
 "use strict";
 
 const TOLERANCE = 10;
@@ -61,7 +292,12 @@ const TOLERANCE = 10;
  */
 module.exports = exports = EntityManager;
 
-
+/**
+ * @constructor EntityManager
+ * Creates a new entity manager object which maintains asteroids, player's ship,
+ * shots and detects collisions
+ * @param {canvasDOMElement} canvas world size
+ */
 function EntityManager(canvas) {
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
@@ -70,18 +306,37 @@ function EntityManager(canvas) {
   this.asteroids = [];
 }
 
+/**
+ * @function addPlayer
+ * Adds a player
+ * {object} player
+ */
 EntityManager.prototype.addPlayer = function(player) {
   this.player = player;
 }
 
+/**
+ * @function addShot
+ * Adds a shot
+ * {object} shot
+ */
 EntityManager.prototype.addShot = function(shot) {
   this.shots.push(shot);
 }
 
+/**
+ * @function addAsteroid
+ * Adds an asteroid
+ * {object} asteroid
+ */
 EntityManager.prototype.addAsteroid = function(asteroid) {
   this.asteroids.push(asteroid);
 }
 
+/**
+ * @function removeInvalidShots
+ * Goes over all shots and removes all which are off the screen
+ */
 function removeInvalidShots() {
   var self = this;
   this.shots = this.shots.filter(function(shot){
@@ -92,6 +347,12 @@ function removeInvalidShots() {
   });
 }
 
+/**
+ * @function update
+ * Updates all entities, removes invalid shots
+ * @param {DOMHighResTimeStamp} elapsedTime indicates
+ * the number of milliseconds passed since the last frame.
+ */
 EntityManager.prototype.update = function(elapsedTime) {
   removeInvalidShots.call(this);
 
@@ -104,17 +365,25 @@ EntityManager.prototype.update = function(elapsedTime) {
   });
 }
 
+/**
+  * @function render
+  * Calls a render method on all entities,
+  * all entites are being rendered into a back buffer.
+  * @param {DOMHighResTimeStamp} elapsedTime indicates
+  * the number of milliseconds passed since the last frame.
+  * @param {CanvasRenderingContext2D} ctx the context to render to
+  */
 EntityManager.prototype.render = function(elapsedTime, ctx) {
-  this.player.render(elapsedTime, ctx);
-  this.shots.forEach(function(shot) {
-    shot.render(elapsedTime, ctx);
-  });
   this.asteroids.forEach(function(asteroid) {
     asteroid.render(elapsedTime, ctx);
   });
+  this.shots.forEach(function(shot) {
+    shot.render(elapsedTime, ctx);
+  });
+  this.player.render(elapsedTime, ctx);
 }
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 "use strict";
 
 /**
@@ -172,7 +441,7 @@ Game.prototype.loop = function(newTime) {
   this.frontCtx.drawImage(this.backBuffer, 0, 0);
 }
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 "use strict";
 
 const MS_PER_FRAME = 1000/8;
@@ -190,6 +459,8 @@ module.exports = exports = Player;
  * @constructor Player
  * Creates a new player object
  * @param {Postition} position object specifying an x and y
+ * @param {canvasDOMElement} canvas world size
+ * @param {object} entityManager all entities maintainer
  */
 function Player(position, canvas, entityManager) {
   this.worldWidth = canvas.width;
@@ -254,10 +525,8 @@ function Player(position, canvas, entityManager) {
   }
 }
 
-
-
 /**
- * @function updates the player object
+ * @function update updates the player object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Player.prototype.update = function(time) {
@@ -333,7 +602,7 @@ Player.prototype.render = function(time, ctx) {
   ctx.restore();
 }
 
-},{"./shot.js":5}],5:[function(require,module,exports){
+},{"./shot.js":6}],6:[function(require,module,exports){
 "use strict";
 
 const MAX_VELOCITY = 5;
@@ -343,6 +612,13 @@ const MAX_VELOCITY = 5;
  */
 module.exports = exports = Shot;
 
+/**
+ * @constructor Shot
+ * Creates a new shot object
+ * @param {Postition} position object specifying an x and y
+ * @param {Float} angle indicates how much has to be shot rotated according to
+ * default position 
+ */
 function Shot(position, angle) {
   this.position = {
     x: position.x,
@@ -353,7 +629,7 @@ function Shot(position, angle) {
     y: Math.cos(angle) * MAX_VELOCITY
   }
   this.angle = angle;
-  this.radius  = 2;
+  this.radius = 2;
 }
 
 /**

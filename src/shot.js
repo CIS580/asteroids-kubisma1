@@ -7,6 +7,13 @@ const MAX_VELOCITY = 5;
  */
 module.exports = exports = Shot;
 
+/**
+ * @constructor Shot
+ * Creates a new shot object
+ * @param {Postition} position object specifying an x and y
+ * @param {Float} angle indicates how much has to be shot rotated according to
+ * default position 
+ */
 function Shot(position, angle) {
   this.position = {
     x: position.x,
@@ -17,7 +24,7 @@ function Shot(position, angle) {
     y: Math.cos(angle) * MAX_VELOCITY
   }
   this.angle = angle;
-  this.radius  = 2;
+  this.radius = 2;
 }
 
 /**
