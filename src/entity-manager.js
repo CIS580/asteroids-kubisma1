@@ -1,6 +1,7 @@
 "use strict";
 
 const TOLERANCE = 10;
+const ASTEROID_COLOR = '#C90018';
 
 /**
  * @module exports the EntityManager class
@@ -62,6 +63,49 @@ function removeInvalidShots() {
   });
 }
 
+function handleAsteroidsCollisions() {
+
+  var active = [];
+  var potentiallyColliding = [];
+
+  this.asteroids.forEach(function(asteroid) {
+    active = active.filter(function(oasteroid) {
+      return asteroid.position.x - oasteroid.position.x < asteroid.radius + oasteroid.radius;
+    });
+
+    active.forEach(function(oasteroid) {
+      potentiallyColliding.push({a: oasteroid, b: asteroid});
+    });
+
+    asteroid.color = ASTEROID_COLOR;
+    active.push(asteroid);
+  });
+
+  var collisions = [];
+  var distSquared = undefined;
+  potentiallyColliding.forEach(function(pair){
+    distSquared = Math.pow(pair.a.position.x - pair.b.position.x, 2) +
+                  Math.pow(pair.a.position.y - pair.b.position.y, 2);
+    if(distSquared < Math.pow(pair.a.radius + pair.b.radius, 2)) {
+      pair.a.color = "green";
+      pair.b.color = "green";
+      collisions.push(pair);
+    }
+  });
+}
+
+function handleCollisions() {
+  this.asteroids.sort(function(a,b) {
+    return a.position.x - b.position.x;
+  });
+
+  this.shots.sort(function(a,b) {
+    return a.position.x - b.position.x;
+  });
+
+  handleAsteroidsCollisions.call(this);
+}
+
 /**
  * @function update
  * Updates all entities, removes invalid shots
@@ -70,6 +114,8 @@ function removeInvalidShots() {
  */
 EntityManager.prototype.update = function(elapsedTime) {
   removeInvalidShots.call(this);
+
+  handleCollisions.call(this);
 
   this.player.update(elapsedTime);
   this.shots.forEach(function(shot) {

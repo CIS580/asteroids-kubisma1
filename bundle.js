@@ -83,12 +83,13 @@ function render(elapsedTime, ctx) {
 },{"./asteroid.js":2,"./entity-manager.js":3,"./game.js":4,"./player.js":5}],2:[function(require,module,exports){
 "use strict";
 
-const LARGE_VELOCITY = 2;
-const MEDIUM_VELOCITY = 1.5;
-const SMALL_VELOCITY = 0.5;
+const LARGE_VELOCITY = 1.5;
+const MEDIUM_VELOCITY = 1.1;
+const SMALL_VELOCITY = 0.7;
 const LARGE_RADIUS = 20;
 const MEDIUM_RADIUS = 15;
 const SMALL_RADIUS = 10;
+const ASTEROID_COLOR = '#C90018';
 
 /**
  * @module exports the Asteroid base class
@@ -111,6 +112,7 @@ function Asteroid(position, canvas) {
     y: position.y
   };
   this.angle = Math.random() * 2 - 1;
+  this.color = ASTEROID_COLOR;
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
 }
@@ -129,6 +131,25 @@ Asteroid.prototype.update = function(time) {
   if(this.position.x > this.worldWidth) this.position.x -= this.worldWidth;
   if(this.position.y < 0) this.position.y += this.worldHeight;
   if(this.position.y > this.worldHeight) this.position.y -= this.worldHeight;
+}
+
+/**
+ * @function renders the medium asteroid object into the provided context
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ * {CanvasRenderingContext2D} ctx the context to render into
+ */
+Asteroid.prototype.render = function(time, ctx) {
+  ctx.save();
+
+  // Draw a large asteroid
+  ctx.translate(this.position.x, this.position.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, this.radius, 0, 2*Math.PI);
+  ctx.closePath();
+  ctx.strokeStyle = this.color;
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 /**
@@ -172,22 +193,7 @@ LargeAsteroid.prototype.update = function(time) {
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 LargeAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a large asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-LARGE_RADIUS);
-  ctx.lineTo(LARGE_RADIUS,-LARGE_RADIUS);
-  ctx.lineTo(LARGE_RADIUS,LARGE_RADIUS);
-  ctx.lineTo(-LARGE_RADIUS,LARGE_RADIUS);
-  ctx.lineTo(-LARGE_RADIUS,-LARGE_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
 
 /**
@@ -218,22 +224,7 @@ MediumAsteroid.prototype.update = function(time) {
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 MediumAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a medium asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-MEDIUM_RADIUS);
-  ctx.lineTo(MEDIUM_RADIUS,-MEDIUM_RADIUS);
-  ctx.lineTo(MEDIUM_RADIUS,MEDIUM_RADIUS);
-  ctx.lineTo(-MEDIUM_RADIUS,MEDIUM_RADIUS);
-  ctx.lineTo(-MEDIUM_RADIUS,-MEDIUM_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
 
 /**
@@ -264,28 +255,14 @@ SmallAsteroid.prototype.update = function(time) {
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 SmallAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a medium asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-SMALL_RADIUS);
-  ctx.lineTo(SMALL_RADIUS,-SMALL_RADIUS);
-  ctx.lineTo(SMALL_RADIUS,SMALL_RADIUS);
-  ctx.lineTo(-SMALL_RADIUS,SMALL_RADIUS);
-  ctx.lineTo(-SMALL_RADIUS,-SMALL_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
 
 },{}],3:[function(require,module,exports){
 "use strict";
 
 const TOLERANCE = 10;
+const ASTEROID_COLOR = '#C90018';
 
 /**
  * @module exports the EntityManager class
@@ -347,6 +324,49 @@ function removeInvalidShots() {
   });
 }
 
+function handleAsteroidsCollisions() {
+
+  var active = [];
+  var potentiallyColliding = [];
+
+  this.asteroids.forEach(function(asteroid) {
+    active = active.filter(function(oasteroid) {
+      return asteroid.position.x - oasteroid.position.x < asteroid.radius + oasteroid.radius;
+    });
+
+    active.forEach(function(oasteroid) {
+      potentiallyColliding.push({a: oasteroid, b: asteroid});
+    });
+
+    asteroid.color = ASTEROID_COLOR;
+    active.push(asteroid);
+  });
+
+  var collisions = [];
+  var distSquared = undefined;
+  potentiallyColliding.forEach(function(pair){
+    distSquared = Math.pow(pair.a.position.x - pair.b.position.x, 2) +
+                  Math.pow(pair.a.position.y - pair.b.position.y, 2);
+    if(distSquared < Math.pow(pair.a.radius + pair.b.radius, 2)) {
+      pair.a.color = "green";
+      pair.b.color = "green";
+      collisions.push(pair);
+    }
+  });
+}
+
+function handleCollisions() {
+  this.asteroids.sort(function(a,b) {
+    return a.position.x - b.position.x;
+  });
+
+  this.shots.sort(function(a,b) {
+    return a.position.x - b.position.x;
+  });
+
+  handleAsteroidsCollisions.call(this);
+}
+
 /**
  * @function update
  * Updates all entities, removes invalid shots
@@ -355,6 +375,8 @@ function removeInvalidShots() {
  */
 EntityManager.prototype.update = function(elapsedTime) {
   removeInvalidShots.call(this);
+
+  handleCollisions.call(this);
 
   this.player.update(elapsedTime);
   this.shots.forEach(function(shot) {
@@ -617,7 +639,7 @@ module.exports = exports = Shot;
  * Creates a new shot object
  * @param {Postition} position object specifying an x and y
  * @param {Float} angle indicates how much has to be shot rotated according to
- * default position 
+ * default position
  */
 function Shot(position, angle) {
   this.position = {
@@ -653,11 +675,13 @@ Shot.prototype.render = function(time, ctx) {
   // Draw shot
   ctx.translate(this.position.x, this.position.y);
   ctx.rotate(-this.angle);
+  ctx.strokeStyle = "white";
   ctx.beginPath();
-  ctx.moveTo(-2, 0);
-  ctx.lineTo(-2, 7);
-  ctx.lineTo(2, 7);
-  ctx.lineTo(2, 0);
+  ctx.moveTo(-2, -3);
+  ctx.lineTo(-2, 5);
+  ctx.lineTo(2, 5);
+  ctx.lineTo(2, -3);
+  // ctx.arc(0,0,this.radius*2,0,2*Math.PI);
   ctx.closePath();
   ctx.fillStyle = '#3fdbff';
   ctx.fill();

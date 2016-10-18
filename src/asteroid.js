@@ -1,11 +1,12 @@
 "use strict";
 
-const LARGE_VELOCITY = 2;
-const MEDIUM_VELOCITY = 1.5;
-const SMALL_VELOCITY = 0.5;
+const LARGE_VELOCITY = 1.5;
+const MEDIUM_VELOCITY = 1.1;
+const SMALL_VELOCITY = 0.7;
 const LARGE_RADIUS = 20;
 const MEDIUM_RADIUS = 15;
 const SMALL_RADIUS = 10;
+const ASTEROID_COLOR = '#C90018';
 
 /**
  * @module exports the Asteroid base class
@@ -28,6 +29,7 @@ function Asteroid(position, canvas) {
     y: position.y
   };
   this.angle = Math.random() * 2 - 1;
+  this.color = ASTEROID_COLOR;
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
 }
@@ -46,6 +48,25 @@ Asteroid.prototype.update = function(time) {
   if(this.position.x > this.worldWidth) this.position.x -= this.worldWidth;
   if(this.position.y < 0) this.position.y += this.worldHeight;
   if(this.position.y > this.worldHeight) this.position.y -= this.worldHeight;
+}
+
+/**
+ * @function renders the medium asteroid object into the provided context
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ * {CanvasRenderingContext2D} ctx the context to render into
+ */
+Asteroid.prototype.render = function(time, ctx) {
+  ctx.save();
+
+  // Draw a large asteroid
+  ctx.translate(this.position.x, this.position.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, this.radius, 0, 2*Math.PI);
+  ctx.closePath();
+  ctx.strokeStyle = this.color;
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 /**
@@ -89,22 +110,7 @@ LargeAsteroid.prototype.update = function(time) {
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 LargeAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a large asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-LARGE_RADIUS);
-  ctx.lineTo(LARGE_RADIUS,-LARGE_RADIUS);
-  ctx.lineTo(LARGE_RADIUS,LARGE_RADIUS);
-  ctx.lineTo(-LARGE_RADIUS,LARGE_RADIUS);
-  ctx.lineTo(-LARGE_RADIUS,-LARGE_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
 
 /**
@@ -135,22 +141,7 @@ MediumAsteroid.prototype.update = function(time) {
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 MediumAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a medium asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-MEDIUM_RADIUS);
-  ctx.lineTo(MEDIUM_RADIUS,-MEDIUM_RADIUS);
-  ctx.lineTo(MEDIUM_RADIUS,MEDIUM_RADIUS);
-  ctx.lineTo(-MEDIUM_RADIUS,MEDIUM_RADIUS);
-  ctx.lineTo(-MEDIUM_RADIUS,-MEDIUM_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
 
 /**
@@ -181,20 +172,5 @@ SmallAsteroid.prototype.update = function(time) {
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 SmallAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a medium asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-SMALL_RADIUS);
-  ctx.lineTo(SMALL_RADIUS,-SMALL_RADIUS);
-  ctx.lineTo(SMALL_RADIUS,SMALL_RADIUS);
-  ctx.lineTo(-SMALL_RADIUS,SMALL_RADIUS);
-  ctx.lineTo(-SMALL_RADIUS,-SMALL_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
