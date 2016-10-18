@@ -83,12 +83,16 @@ function render(elapsedTime, ctx) {
 },{"./asteroid.js":2,"./entity-manager.js":3,"./game.js":4,"./player.js":5}],2:[function(require,module,exports){
 "use strict";
 
-const LARGE_VELOCITY = 2;
-const MEDIUM_VELOCITY = 1.5;
-const SMALL_VELOCITY = 0.5;
+const LARGE_VELOCITY = 1.7;
+const MEDIUM_VELOCITY = 1.4;
+const SMALL_VELOCITY = 0.8;
 const LARGE_RADIUS = 20;
 const MEDIUM_RADIUS = 15;
 const SMALL_RADIUS = 10;
+const ASTEROID_COLOR = '#FF0011';
+
+/* Classes */
+const Vector = require('./vector.js');
 
 /**
  * @module exports the Asteroid base class
@@ -105,7 +109,7 @@ module.exports = exports = {
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function Asteroid(position, canvas) {
+function Asteroid(position, radius, canvas) {
   this.position = {
     x: position.x,
     y: position.y
@@ -113,6 +117,8 @@ function Asteroid(position, canvas) {
   this.angle = Math.random() * 2 - 1;
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
+  this.color = ASTEROID_COLOR;
+  this.radius = radius;
 }
 
 /**
@@ -132,6 +138,31 @@ Asteroid.prototype.update = function(time) {
 }
 
 /**
+ * @function renders the large asteroid object into the provided context
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ * {CanvasRenderingContext2D} ctx the context to render into
+ */
+Asteroid.prototype.render = function(time, ctx) {
+  ctx.save();
+
+  // Draw an asteroid
+  //ctx.translate(this.position.x, this.position.y);
+  //ctx.rotate(-this.angle);
+  ctx.beginPath();
+  ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+  for(var i = 1; i < this.vertices.length; i++) {
+    ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = this.color;
+  ctx.arc(this.position.x, this.position.y, 3, 0, 2*Math.PI);
+  ctx.arc(this.position.x, this.position.y, this.radius, 0, 2*Math.PI);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
   * @function calculateVelocity
   * calculates a velocity based on asteroids angle and max velocity
   * @param {Float} angle
@@ -145,16 +176,32 @@ function calculateVelocity(angle, maxVelocity) {
 }
 
 /**
+  * @function updateVertices
+  * calculates new vertices after rotation
+  */
+function updateVertices() {
+  var addition;
+  var vertices = [];
+  for(var i = 0; i < this.coords.length; i++){
+    addition = Vector.rotate(this.coords[i], -this.angle);
+    vertices.push({x: this.position.x + addition.x, y: this.position.y + addition.y});
+  }
+  return vertices;
+}
+
+/**
  * @constructor LargeAsteroid
  * Creates a new large asteroid object
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
 function LargeAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+  Asteroid.call(this, position, LARGE_RADIUS, canvas);
 
-  this.radius = LARGE_RADIUS;
   this.velocity = calculateVelocity(this.angle, LARGE_VELOCITY);
+  this.coords = [{x: LARGE_RADIUS, y: -LARGE_RADIUS}, {x: LARGE_RADIUS, y: LARGE_RADIUS},
+                 {x: -LARGE_RADIUS, y: LARGE_RADIUS}, {x: -LARGE_RADIUS, y: -LARGE_RADIUS}];
+  this.vertices = updateVertices.call(this);
 }
 
 /**
@@ -163,31 +210,17 @@ function LargeAsteroid(position, canvas) {
  */
 LargeAsteroid.prototype.update = function(time) {
   Asteroid.prototype.update.call(this, time);
-  this.angle -= 0.08;
+  this.angle -= 0.05;
+  this.vertices = updateVertices.call(this, LARGE_RADIUS);
 }
 
 /**
- * @function renders the large asteroid object into the provided context
+ * @function renders the small asteroid into the provided context
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 LargeAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a large asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-LARGE_RADIUS);
-  ctx.lineTo(LARGE_RADIUS,-LARGE_RADIUS);
-  ctx.lineTo(LARGE_RADIUS,LARGE_RADIUS);
-  ctx.lineTo(-LARGE_RADIUS,LARGE_RADIUS);
-  ctx.lineTo(-LARGE_RADIUS,-LARGE_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
 
 /**
@@ -197,10 +230,12 @@ LargeAsteroid.prototype.render = function(time, ctx) {
  * @param {canvasDOMElement} canvas world size
  */
 function MediumAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+  Asteroid.call(this, position, MEDIUM_RADIUS, canvas);
 
-  this.radius = MEDIUM_RADIUS;
   this.velocity = calculateVelocity(this.angle, MEDIUM_VELOCITY);
+  this.coords = [{x: MEDIUM_RADIUS, y: -MEDIUM_RADIUS}, {x: MEDIUM_RADIUS, y: MEDIUM_RADIUS},
+                 {x: -MEDIUM_RADIUS, y: MEDIUM_RADIUS}, {x: -MEDIUM_RADIUS, y: -MEDIUM_RADIUS}];
+  this.vertices = updateVertices.call(this, MEDIUM_RADIUS);
 }
 
 /**
@@ -209,31 +244,17 @@ function MediumAsteroid(position, canvas) {
  */
 MediumAsteroid.prototype.update = function(time) {
   Asteroid.prototype.update.call(this, time);
-  this.angle += 0.02;
+  this.angle += 0.035;
+  this.vertices = updateVertices.call(this, MEDIUM_RADIUS);
 }
 
 /**
- * @function renders the medium asteroid object into the provided context
+ * @function renders the small asteroid into the provided context
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 MediumAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a medium asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-MEDIUM_RADIUS);
-  ctx.lineTo(MEDIUM_RADIUS,-MEDIUM_RADIUS);
-  ctx.lineTo(MEDIUM_RADIUS,MEDIUM_RADIUS);
-  ctx.lineTo(-MEDIUM_RADIUS,MEDIUM_RADIUS);
-  ctx.lineTo(-MEDIUM_RADIUS,-MEDIUM_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
 
 /**
@@ -243,10 +264,12 @@ MediumAsteroid.prototype.render = function(time, ctx) {
  * @param {canvasDOMElement} canvas world size
  */
 function SmallAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+  Asteroid.call(this, position, SMALL_RADIUS, canvas);
 
-  this.radius = SMALL_RADIUS;
   this.velocity = calculateVelocity(this.angle, SMALL_VELOCITY);
+  this.coords = [{x: SMALL_RADIUS, y: -SMALL_RADIUS}, {x: SMALL_RADIUS, y: SMALL_RADIUS},
+                 {x: -SMALL_RADIUS, y: SMALL_RADIUS}, {x: -SMALL_RADIUS, y: -SMALL_RADIUS}];
+  this.vertices = updateVertices.call(this, SMALL_RADIUS);
 }
 
 /**
@@ -255,7 +278,8 @@ function SmallAsteroid(position, canvas) {
  */
 SmallAsteroid.prototype.update = function(time) {
   Asteroid.prototype.update.call(this, time);
-  this.angle -= 0.009;
+  this.angle -= 0.018;
+  this.vertices = updateVertices.call(this, SMALL_RADIUS);
 }
 
 /**
@@ -264,28 +288,17 @@ SmallAsteroid.prototype.update = function(time) {
  * {CanvasRenderingContext2D} ctx the context to render into
  */
 SmallAsteroid.prototype.render = function(time, ctx) {
-  ctx.save();
-
-  // Draw a medium asteroid
-  ctx.translate(this.position.x, this.position.y);
-  ctx.rotate(-this.angle);
-  ctx.beginPath();
-  ctx.moveTo(0,-SMALL_RADIUS);
-  ctx.lineTo(SMALL_RADIUS,-SMALL_RADIUS);
-  ctx.lineTo(SMALL_RADIUS,SMALL_RADIUS);
-  ctx.lineTo(-SMALL_RADIUS,SMALL_RADIUS);
-  ctx.lineTo(-SMALL_RADIUS,-SMALL_RADIUS);
-  ctx.closePath();
-  ctx.strokeStyle = '#C90018';
-  ctx.stroke();
-
-  ctx.restore();
+  Asteroid.prototype.render.call(this, time, ctx);
 }
 
-},{}],3:[function(require,module,exports){
+},{"./vector.js":7}],3:[function(require,module,exports){
 "use strict";
 
 const TOLERANCE = 10;
+const ASTEROID_COLOR = '#FF0011';
+
+/* Classes */
+const Vector = require('./vector.js');
 
 /**
  * @module exports the EntityManager class
@@ -347,6 +360,50 @@ function removeInvalidShots() {
   });
 }
 
+function testForShapeCollision(shape1, shape2) {
+  var axes = Vector.findAxes(shape1) + Vector.findAxes(shape2);
+  for(var i = 0; i < axes.length; i++) {
+    var proj1 = Vector.project(shape1, axes[i]);
+    var proj2 = Vector.project(shape2, axes[i]);
+    if(proj1.max < proj2.min || proj1.min > proj2.max) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function handleAsteroidsCollisions() {
+  var active = [];
+  var potentiallyColliding = [];
+
+  this.asteroids.forEach(function(asteroid) {
+    asteroid.color = ASTEROID_COLOR;
+    active = active.filter(function(oasteroid) {
+      return Math.pow(asteroid.position.x - oasteroid.position.x,2) < Math.pow(asteroid.radius,2) + Math.pow(oasteroid.radius,2);
+    });
+
+    active.forEach(function(oasteroid){
+      potentiallyColliding.push({a: asteroid, b: oasteroid});
+    });
+
+    active.push(asteroid);
+  });
+
+  potentiallyColliding.forEach(function(pair){
+    if(testForShapeCollision(pair.a, pair.b)) {
+      pair.a.color = 'green';
+      pair.b.color = 'green';
+    }
+  });
+}
+
+function handleCollisions() {
+  this.asteroids.sort(function(a,b){return a.position.x - b.position.x});
+  this.shots.sort(function(a,b){return a.position.x - b.position.x});
+
+  handleAsteroidsCollisions.call(this);
+}
+
 /**
  * @function update
  * Updates all entities, removes invalid shots
@@ -355,6 +412,8 @@ function removeInvalidShots() {
  */
 EntityManager.prototype.update = function(elapsedTime) {
   removeInvalidShots.call(this);
+
+  handleCollisions.call(this);
 
   this.player.update(elapsedTime);
   this.shots.forEach(function(shot) {
@@ -383,7 +442,7 @@ EntityManager.prototype.render = function(elapsedTime, ctx) {
   this.player.render(elapsedTime, ctx);
 }
 
-},{}],4:[function(require,module,exports){
+},{"./vector.js":7}],4:[function(require,module,exports){
 "use strict";
 
 /**
@@ -617,7 +676,7 @@ module.exports = exports = Shot;
  * Creates a new shot object
  * @param {Postition} position object specifying an x and y
  * @param {Float} angle indicates how much has to be shot rotated according to
- * default position 
+ * default position
  */
 function Shot(position, angle) {
   this.position = {
@@ -630,6 +689,7 @@ function Shot(position, angle) {
   }
   this.angle = angle;
   this.radius = 2;
+  this.vertices = [{x: -2, y: 0}, {x: -2, y: 7}, {x: 2, y: 7}, {x: 2, y: 0}];
 }
 
 /**
@@ -654,16 +714,100 @@ Shot.prototype.render = function(time, ctx) {
   ctx.translate(this.position.x, this.position.y);
   ctx.rotate(-this.angle);
   ctx.beginPath();
-  ctx.moveTo(-2, 0);
-  ctx.lineTo(-2, 7);
-  ctx.lineTo(2, 7);
-  ctx.lineTo(2, 0);
+  ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+  for(var i = 1; i < this.vertices.length; i++) {
+    ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
+  }
   ctx.closePath();
   ctx.fillStyle = '#3fdbff';
   ctx.fill();
 
   // Draw engine thrust
   ctx.restore();
+}
+
+},{}],7:[function(require,module,exports){
+"use strict";
+
+module.exports = exports = {
+  rotate: rotate,
+  dotProduct: dotProduct,
+  magnitude: magnitude,
+  normalize: normalize,
+  perpendicular: perpendicular,
+  findAxes: findAxes,
+  project: project
+}
+
+/**
+ * Stands for matrix multiplication  {x,y} * {{cos phi, -sin phi}, {sin phi, cos phi}}
+ */
+function add(a, b) {
+  return {
+    x: a.x + b.x,
+    y: a.y + b.y
+  }
+}
+
+function subtract(a, b) {
+  return {
+    x: a.x - b.x,
+    y: a.y - b.y
+  }
+}
+
+function rotate(a, angle) {
+  return {
+    x: a.x * Math.cos(angle) - a.y * Math.sin(angle),
+    y: a.x * Math.sin(angle) + a.y * Math.cos(angle)
+  }
+}
+
+function dotProduct(a, b) {
+  return a.x * b.x + a.y * b.y;
+}
+
+function magnitude(a) {
+  return Math.sqrt(a.x * a.x + a.y * a.y);
+}
+
+function normalize(a) {
+  var mag = magnitude(a);
+  return {
+    x: a.x / mag,
+    y: a.y / mag
+  };
+}
+
+function perpendicular(a) {
+  return {
+    x: -a.y,
+    y: a.x
+  }
+}
+
+function findAxes(shape) {
+  var axes = [];
+  shape.vertices.forEach(function(p1, i){
+    // find the adjacent vertex
+    var p2 = (shape.vertices.length == i+1) ? shape.vertices[0] : shape.vertices[i+1];
+    var edge = subtract(p2, p1);
+    var perp = perpendicular(edge);
+    var normal = normalize(perp);
+    axes.push(normal);
+  });
+  return axes;
+}
+
+function project(shape, axis){
+  var min = dotProduct(shape.vertices[0], axis);
+  var max = min;
+  for(var i = 1; i < shape.vertices.length; i++){
+    var p = dotProduct(shape.vertices[i], axis);
+    if(p < min) min = p;
+    else if(p > max) max = p;
+  }
+  return {min: min, max: max};
 }
 
 },{}]},{},[1]);

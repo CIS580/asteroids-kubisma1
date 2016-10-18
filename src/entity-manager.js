@@ -1,6 +1,10 @@
 "use strict";
 
 const TOLERANCE = 10;
+const ASTEROID_COLOR = '#FF0011';
+
+/* Classes */
+const Vector = require('./vector.js');
 
 /**
  * @module exports the EntityManager class
@@ -62,6 +66,50 @@ function removeInvalidShots() {
   });
 }
 
+function testForShapeCollision(shape1, shape2) {
+  var axes = Vector.findAxes(shape1) + Vector.findAxes(shape2);
+  for(var i = 0; i < axes.length; i++) {
+    var proj1 = Vector.project(shape1, axes[i]);
+    var proj2 = Vector.project(shape2, axes[i]);
+    if(proj1.max < proj2.min || proj1.min > proj2.max) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function handleAsteroidsCollisions() {
+  var active = [];
+  var potentiallyColliding = [];
+
+  this.asteroids.forEach(function(asteroid) {
+    asteroid.color = ASTEROID_COLOR;
+    active = active.filter(function(oasteroid) {
+      return Math.pow(asteroid.position.x - oasteroid.position.x,2) < Math.pow(asteroid.radius,2) + Math.pow(oasteroid.radius,2);
+    });
+
+    active.forEach(function(oasteroid){
+      potentiallyColliding.push({a: asteroid, b: oasteroid});
+    });
+
+    active.push(asteroid);
+  });
+
+  potentiallyColliding.forEach(function(pair){
+    if(testForShapeCollision(pair.a, pair.b)) {
+      pair.a.color = 'green';
+      pair.b.color = 'green';
+    }
+  });
+}
+
+function handleCollisions() {
+  this.asteroids.sort(function(a,b){return a.position.x - b.position.x});
+  this.shots.sort(function(a,b){return a.position.x - b.position.x});
+
+  handleAsteroidsCollisions.call(this);
+}
+
 /**
  * @function update
  * Updates all entities, removes invalid shots
@@ -70,6 +118,8 @@ function removeInvalidShots() {
  */
 EntityManager.prototype.update = function(elapsedTime) {
   removeInvalidShots.call(this);
+
+  handleCollisions.call(this);
 
   this.player.update(elapsedTime);
   this.shots.forEach(function(shot) {

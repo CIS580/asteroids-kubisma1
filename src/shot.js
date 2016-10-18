@@ -12,7 +12,7 @@ module.exports = exports = Shot;
  * Creates a new shot object
  * @param {Postition} position object specifying an x and y
  * @param {Float} angle indicates how much has to be shot rotated according to
- * default position 
+ * default position
  */
 function Shot(position, angle) {
   this.position = {
@@ -25,6 +25,7 @@ function Shot(position, angle) {
   }
   this.angle = angle;
   this.radius = 2;
+  this.vertices = [{x: -2, y: 0}, {x: -2, y: 7}, {x: 2, y: 7}, {x: 2, y: 0}];
 }
 
 /**
@@ -49,10 +50,10 @@ Shot.prototype.render = function(time, ctx) {
   ctx.translate(this.position.x, this.position.y);
   ctx.rotate(-this.angle);
   ctx.beginPath();
-  ctx.moveTo(-2, 0);
-  ctx.lineTo(-2, 7);
-  ctx.lineTo(2, 7);
-  ctx.lineTo(2, 0);
+  ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+  for(var i = 1; i < this.vertices.length; i++) {
+    ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
+  }
   ctx.closePath();
   ctx.fillStyle = '#3fdbff';
   ctx.fill();
