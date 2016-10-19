@@ -96,7 +96,7 @@ function determineCollisions(potentiallyColliding) {
  */
 function handleAsteroidPlayerCollisions() {
 
-  if(this.player.protectionTimer > 0) return;
+  if(this.player.protectionTimer > 0 || this.player.state == "protected") return;
 
   var potentiallyColliding = [];
   var player = this.player;
@@ -177,7 +177,7 @@ function handleAsteroidsCollisions() {
     pair.b.velocity.y = b.y;
   });
 
-  if(collisions.length > 0) resourceManager.collision.play();
+  if(collisions.length > 0 && this.player.state != "protected") resourceManager.collision.play();
 }
 
 /**

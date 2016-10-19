@@ -13,6 +13,9 @@ var entityManager = new EntityManager(canvas);
 var player = new Player({x: canvas.width/2, y: canvas.height/2}, canvas, entityManager);
 entityManager.addPlayer(player);
 var overlayDiv = document.getElementById('overlay');
+var button = document.getElementById('btn');
+button.addEventListener('click', newGame);
+var header = document.getElementById("text");
 
 var level = 1;
 
@@ -60,10 +63,57 @@ var masterLoop = function(timestamp) {
   window.requestAnimationFrame(masterLoop);
 }
 
+masterLoop(performance.now());
+
+/**
+ * @function preGame
+ * fills the intro screen
+ */
+function preGame() {
+  header.innerHTML = "NEW GAME";
+  button.innerHTML = "Start";
+}
+preGame();
+
+/**
+ * @function newGame
+ * allows player to play
+ */
 function newGame() {
-  overlayDiv.style.transition = "all .2s ease-out";
+  player.state = "idle";
+  player.reset();
   overlayDiv.style.display = "none";
-  masterLoop(performance.now());
+  btn.blur();
+}
+
+/**
+ * @function geameOver
+ * disables the player to play
+ */
+function gameOver() {
+  overlayDiv.style.display = "block";
+  header.innerHTML = "GAME OVER";
+  button.innerHTML = "Restart";
+  player.state = "protected";
+  player.protectionTimer = 0;
+  button.removeAttribute('onclick');
+  button.addEventListener('click', gameRestart);
+  btn.blur();
+}
+
+/**
+ * @function gameRestart
+ * restarts the game
+ */
+function gameRestart() {
+  overlayDiv.style.display = "none";
+  level = 1;
+  player.score = 0;
+  player.lives = 3;
+  player.reset();
+  generateAsteroids(level);
+  button.removeAttribute('onclick');
+  btn.blur();
 }
 
 /**
@@ -79,7 +129,7 @@ function update(elapsedTime) {
 
   entityManager.update(elapsedTime);
 
-  if(player.lives == 0) return; // TODO Game Over
+  if(player.lives == 0) gameOver();
 
   if(prevLives != player.lives) {
     player.reset();

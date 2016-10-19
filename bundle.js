@@ -14,6 +14,9 @@ var entityManager = new EntityManager(canvas);
 var player = new Player({x: canvas.width/2, y: canvas.height/2}, canvas, entityManager);
 entityManager.addPlayer(player);
 var overlayDiv = document.getElementById('overlay');
+var button = document.getElementById('btn');
+button.addEventListener('click', newGame);
+var header = document.getElementById("text");
 
 var level = 1;
 
@@ -61,10 +64,57 @@ var masterLoop = function(timestamp) {
   window.requestAnimationFrame(masterLoop);
 }
 
+masterLoop(performance.now());
+
+/**
+ * @function preGame
+ * fills the intro screen
+ */
+function preGame() {
+  header.innerHTML = "NEW GAME";
+  button.innerHTML = "Start";
+}
+preGame();
+
+/**
+ * @function newGame
+ * allows player to play
+ */
 function newGame() {
-  overlayDiv.style.transition = "all .2s ease-out";
+  player.state = "idle";
+  player.reset();
   overlayDiv.style.display = "none";
-  masterLoop(performance.now());
+  btn.blur();
+}
+
+/**
+ * @function geameOver
+ * disables the player to play
+ */
+function gameOver() {
+  overlayDiv.style.display = "block";
+  header.innerHTML = "GAME OVER";
+  button.innerHTML = "Restart";
+  player.state = "protected";
+  player.protectionTimer = 0;
+  button.removeAttribute('onclick');
+  button.addEventListener('click', gameRestart);
+  btn.blur();
+}
+
+/**
+ * @function gameRestart
+ * restarts the game
+ */
+function gameRestart() {
+  overlayDiv.style.display = "none";
+  level = 1;
+  player.score = 0;
+  player.lives = 3;
+  player.reset();
+  generateAsteroids(level);
+  button.removeAttribute('onclick');
+  btn.blur();
 }
 
 /**
@@ -80,7 +130,7 @@ function update(elapsedTime) {
 
   entityManager.update(elapsedTime);
 
-  if(player.lives == 0) return; // TODO Game Over
+  if(player.lives == 0) gameOver();
 
   if(prevLives != player.lives) {
     player.reset();
@@ -515,7 +565,7 @@ function determineCollisions(potentiallyColliding) {
  */
 function handleAsteroidPlayerCollisions() {
 
-  if(this.player.protectionTimer > 0) return;
+  if(this.player.protectionTimer > 0 || this.player.state == "protected") return;
 
   var potentiallyColliding = [];
   var player = this.player;
@@ -596,7 +646,7 @@ function handleAsteroidsCollisions() {
     pair.b.velocity.y = b.y;
   });
 
-  if(collisions.length > 0) resourceManager.collision.play();
+  if(collisions.length > 0 && this.player.state != "protected") resourceManager.collision.play();
 }
 
 /**
@@ -791,7 +841,7 @@ module.exports = exports = Player;
 function Player(position, canvas, entityManager) {
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
-  this.state = "idle";
+  this.state = "protected";
   this.position = {
     x: position.x,
     y: position.y
@@ -804,7 +854,7 @@ function Player(position, canvas, entityManager) {
   this.radius = 12;
   this.lives = 3;
   this.score = 0;
-  this.protectionTimer = PROTECTION_TIMEOUT;
+  this.protectionTimer = 0;
   this.thrusting = false;
   this.shooting = false;
   this.steerLeft = false;
@@ -814,6 +864,8 @@ function Player(position, canvas, entityManager) {
 
   var self = this;
   window.onkeydown = function(event) {
+    if(self.state == "protected") return;
+
     switch(event.key) {
       case 'ArrowUp': // up
       case 'w':
@@ -834,6 +886,8 @@ function Player(position, canvas, entityManager) {
   }
 
   window.onkeyup = function(event) {
+    if(self.state == "protected") return;
+
     switch(event.key) {
       case 'ArrowUp': // up
       case 'w':
@@ -859,10 +913,15 @@ function Player(position, canvas, entityManager) {
  * Resets player to initial state
  */
 Player.prototype.reset = function() {
+  this.state = "idle";
   this.protectionTimer = PROTECTION_TIMEOUT;
   this.position = {x: this.worldWidth / 2, y: this.worldHeight / 2};
   this.velocity = {x: 0, y: 0};
   this.angle = 0;
+  this.thrusting = false;
+  this.shooting = false;
+  this.steerLeft = false;
+  this.steerRight = false;
 }
 
 /**
@@ -889,6 +948,8 @@ Player.prototype.addPoints = function(score) {
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Player.prototype.update = function(time) {
+
+  if(this.state == "protected") return;
 
   if(this.protectionTimer > 0) {
     this.protectionTimer -= time;

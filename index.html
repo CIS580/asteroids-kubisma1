@@ -6,8 +6,21 @@
   </head>
   <body>
     <h1>Play Asteroids</h1>
-    <canvas id="screen" width="768" height="512"></canvas>
+    <div id="container">
+      <div id="overlay">
+        <h2 id="text"></h2>
+        <button id="btn"></button>
+      </div>
+      <canvas id="screen" width="768" height="512"></canvas>
+    </div>
     <h2>Instructions</h2>
+    <p>Navigate you space ship around the game world using by arrow keys or by 'W', 'A', 'S', 'D'.
+       Stay aware of asteroids (red), they can damage your ship and decrease your lives. Moreover
+       destroy asteroids as many as possible using your Space Bar key. By destroying asteroids you will gain a score. The
+       largest asteroid needs to be hit three times, middle sized asteroid two times, small asteroid
+       just once. If asteroid is not a small one, it will break up into several smaller pieces
+       if being hit enough.
+     </p>
     <script type="text/javascript" src="bundle.js"></script>
   </body>
 </html>

@@ -25,7 +25,7 @@ module.exports = exports = Player;
 function Player(position, canvas, entityManager) {
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
-  this.state = "idle";
+  this.state = "protected";
   this.position = {
     x: position.x,
     y: position.y
@@ -38,7 +38,7 @@ function Player(position, canvas, entityManager) {
   this.radius = 12;
   this.lives = 3;
   this.score = 0;
-  this.protectionTimer = PROTECTION_TIMEOUT;
+  this.protectionTimer = 0;
   this.thrusting = false;
   this.shooting = false;
   this.steerLeft = false;
@@ -48,6 +48,8 @@ function Player(position, canvas, entityManager) {
 
   var self = this;
   window.onkeydown = function(event) {
+    if(self.state == "protected") return;
+
     switch(event.key) {
       case 'ArrowUp': // up
       case 'w':
@@ -68,6 +70,8 @@ function Player(position, canvas, entityManager) {
   }
 
   window.onkeyup = function(event) {
+    if(self.state == "protected") return;
+
     switch(event.key) {
       case 'ArrowUp': // up
       case 'w':
@@ -93,10 +97,15 @@ function Player(position, canvas, entityManager) {
  * Resets player to initial state
  */
 Player.prototype.reset = function() {
+  this.state = "idle";
   this.protectionTimer = PROTECTION_TIMEOUT;
   this.position = {x: this.worldWidth / 2, y: this.worldHeight / 2};
   this.velocity = {x: 0, y: 0};
   this.angle = 0;
+  this.thrusting = false;
+  this.shooting = false;
+  this.steerLeft = false;
+  this.steerRight = false;
 }
 
 /**
@@ -123,6 +132,8 @@ Player.prototype.addPoints = function(score) {
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Player.prototype.update = function(time) {
+
+  if(this.state == "protected") return;
 
   if(this.protectionTimer > 0) {
     this.protectionTimer -= time;
