@@ -27,15 +27,15 @@ function generatePosition() {
 function generateAsteroids(level) {
 
   for(var i = 0; i < 4 + Math.floor(level * 1/4); i++) {
-    entityManager.addAsteroid(new Asteroid.LargeAsteroid(generatePosition(),canvas));
+    entityManager.addAsteroid(new Asteroid.LargeAsteroid(generatePosition(),Math.random() * 2 - 1,canvas));
   }
 
   for(var j = 0; j < 3 + Math.floor(level * 1/3); j++) {
-    entityManager.addAsteroid(new Asteroid.MediumAsteroid(generatePosition(),canvas));
+    entityManager.addAsteroid(new Asteroid.MediumAsteroid(generatePosition(),Math.random() * 2 - 1,canvas));
   }
 
   for(var k = 0; k < 3 + Math.floor(level * 1/2); k++) {
-    entityManager.addAsteroid(new Asteroid.SmallAsteroid(generatePosition(),canvas));
+    entityManager.addAsteroid(new Asteroid.SmallAsteroid(generatePosition(),Math.random() * 2 - 1,canvas));
   }
 
 }

@@ -28,15 +28,15 @@ function generatePosition() {
 function generateAsteroids(level) {
 
   for(var i = 0; i < 4 + Math.floor(level * 1/4); i++) {
-    entityManager.addAsteroid(new Asteroid.LargeAsteroid(generatePosition(),canvas));
+    entityManager.addAsteroid(new Asteroid.LargeAsteroid(generatePosition(),Math.random() * 2 - 1,canvas));
   }
 
   for(var j = 0; j < 3 + Math.floor(level * 1/3); j++) {
-    entityManager.addAsteroid(new Asteroid.MediumAsteroid(generatePosition(),canvas));
+    entityManager.addAsteroid(new Asteroid.MediumAsteroid(generatePosition(),Math.random() * 2 - 1,canvas));
   }
 
   for(var k = 0; k < 3 + Math.floor(level * 1/2); k++) {
-    entityManager.addAsteroid(new Asteroid.SmallAsteroid(generatePosition(),canvas));
+    entityManager.addAsteroid(new Asteroid.SmallAsteroid(generatePosition(),Math.random() * 2 - 1,canvas));
   }
 
 }
@@ -89,7 +89,11 @@ const SMALL_VELOCITY = 0.7;
 const LARGE_RADIUS = 20;
 const MEDIUM_RADIUS = 15;
 const SMALL_RADIUS = 10;
+const LARGE_LIVES = 3;
+const MEDIUM_LIVES = 2;
+const SMALL_LIVES = 1;
 const ASTEROID_COLOR = '#C90018';
+const INVALID_POSITION = -300;
 
 /**
  * @module exports the Asteroid base class
@@ -106,22 +110,35 @@ module.exports = exports = {
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function Asteroid(position, canvas) {
+function Asteroid(position, angle, canvas) {
   this.position = {
     x: position.x,
     y: position.y
   };
-  this.angle = Math.random() * 2 - 1;
+  this.angle = angle;
   this.color = ASTEROID_COLOR;
+  this.canvas = canvas;
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
 }
 
 /**
- * @function updates the asteroid object
+ * @function hit
+ * decreases asteroid lives
+ */
+Asteroid.prototype.hit = function() {
+  if(this.lives > 0) this.lives--;
+}
+
+/**
+ * @function update
+ * updates the asteroid object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Asteroid.prototype.update = function(time) {
+
+  if(this.position.x == INVALID_POSITION && this.position.y == INVALID_POSITION) return;
+
   // Apply velocity
   this.position.x -= this.velocity.x;
   this.position.y -= this.velocity.y;
@@ -134,7 +151,8 @@ Asteroid.prototype.update = function(time) {
 }
 
 /**
- * @function renders the medium asteroid object into the provided context
+ * @function render
+ * renders the medium asteroid object into the provided context
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  * {CanvasRenderingContext2D} ctx the context to render into
  */
@@ -153,11 +171,11 @@ Asteroid.prototype.render = function(time, ctx) {
 }
 
 /**
-  * @function calculateVelocity
-  * calculates a velocity based on asteroids angle and max velocity
-  * @param {Float} angle
-  * @param {Float} maxVelocity max speed of an asteroid
-  */
+ * @function calculateVelocity
+ * calculates a velocity based on asteroids angle and max velocity
+ * @param {Float} angle
+ * @param {Float} maxVelocity max speed of an asteroid
+ */
 function calculateVelocity(angle, maxVelocity) {
   return {
     x: Math.sin(angle) * maxVelocity,
@@ -166,16 +184,65 @@ function calculateVelocity(angle, maxVelocity) {
 }
 
 /**
+ * @function setInvalidPosition
+ * sets asteroid's position to invalid coords
+ */
+function setInvalidPosition() {
+  this.position = {x: INVALID_POSITION, y: INVALID_POSITION};
+}
+
+/**
+ * @function getNewAngles
+ * generates new angles based on original angle
+ */
+function getNewAngles() {
+  var angle;
+  var angles = [];
+  var random = Math.floor(Math.random() * 2) + 2;
+  
+  for(var x = 1; x <= random; x++) {
+    angle = this.angle % 2*Math.PI;
+    angles.push((angle - (x*Math.PI/2)) % 2*Math.PI);
+  }
+
+  return angles;
+}
+
+/**
  * @constructor LargeAsteroid
  * Creates a new large asteroid object
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function LargeAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+function LargeAsteroid(position, angle, canvas) {
+  Asteroid.call(this, position, angle, canvas);
 
   this.radius = LARGE_RADIUS;
+  this.lives = LARGE_LIVES;
   this.velocity = calculateVelocity(this.angle, LARGE_VELOCITY);
+}
+
+/**
+ * @function hit
+ * decreases asteroid lives
+ */
+LargeAsteroid.prototype.hit = function() {
+  Asteroid.prototype.hit.call(this);
+
+  var newAsteroids = [];
+
+  if(this.lives == 0) {
+    var angles = getNewAngles.call(this);
+    var position;
+    var self = this;
+    angles.forEach(function(angle) {
+      position = {x: self.position.x + Math.sin(angle) * MEDIUM_RADIUS, y: self.position.y + Math.cos(angle) * MEDIUM_RADIUS};
+      newAsteroids.push(new MediumAsteroid(position, angle, self.canvas))
+    });
+    setInvalidPosition.call(this);
+  }
+
+  return newAsteroids;
 }
 
 /**
@@ -202,11 +269,35 @@ LargeAsteroid.prototype.render = function(time, ctx) {
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function MediumAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+function MediumAsteroid(position, angle, canvas) {
+  Asteroid.call(this, position, angle, canvas);
 
   this.radius = MEDIUM_RADIUS;
+  this.lives = MEDIUM_LIVES;
   this.velocity = calculateVelocity(this.angle, MEDIUM_VELOCITY);
+}
+
+/**
+ * @function hit
+ * decreases asteroid lives
+ */
+MediumAsteroid.prototype.hit = function() {
+  Asteroid.prototype.hit.call(this);
+
+  var newAsteroids = [];
+
+  if(this.lives == 0) {
+    var angles = getNewAngles.call(this);
+    var position;
+    var self = this;
+    angles.forEach(function(angle) {
+      position = {x: self.position.x + Math.sin(angle) * SMALL_RADIUS, y: self.position.y + Math.cos(angle) * SMALL_RADIUS};
+      newAsteroids.push(new SmallAsteroid(position, angle, self.canvas))
+    });
+    setInvalidPosition.call(this);
+  }
+
+  return newAsteroids;
 }
 
 /**
@@ -233,11 +324,23 @@ MediumAsteroid.prototype.render = function(time, ctx) {
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function SmallAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+function SmallAsteroid(position, angle, canvas) {
+  Asteroid.call(this, position, angle, canvas);
 
   this.radius = SMALL_RADIUS;
+  this.lives = SMALL_LIVES;
   this.velocity = calculateVelocity(this.angle, SMALL_VELOCITY);
+}
+
+/**
+ * @function hit
+ * decreases asteroid lives
+ */
+SmallAsteroid.prototype.hit = function() {
+  Asteroid.prototype.hit.call(this);
+
+  if(this.lives == 0) setInvalidPosition.call(this);
+  return [];
 }
 
 /**
@@ -262,6 +365,7 @@ SmallAsteroid.prototype.render = function(time, ctx) {
 "use strict";
 
 const TOLERANCE = 10;
+const INVALID_POSITION = -300;
 const ASTEROID_COLOR = '#C90018';
 
 /* Classes */
@@ -314,17 +418,32 @@ EntityManager.prototype.addAsteroid = function(asteroid) {
 }
 
 /**
- * @function removeInvalidShots
- * Goes over all shots and removes all which are off the screen
+ * @function removeInvalidEntities
+ * Goes over all given entities and removes all which are off the screen
  */
-function removeInvalidShots() {
+function removeInvalidEntities(entities) {
   var self = this;
-  this.shots = this.shots.filter(function(shot){
-    return shot.position.x + TOLERANCE >= 0 &&
-           shot.position.y + TOLERANCE >= 0 &&
-           shot.position.x - TOLERANCE <= self.worldWidth &&
-           shot.position.y - TOLERANCE <= self.worldHeight
+  return entities.filter(function(entity) {
+    return entity.position.x + TOLERANCE >= 0 &&
+           entity.position.y + TOLERANCE >= 0 &&
+           entity.position.x - TOLERANCE <= self.worldWidth &&
+           entity.position.y - TOLERANCE <= self.worldHeight
   });
+}
+
+function determineCollisions(potentiallyColliding) {
+  var distSquared = undefined;
+  var collisions = [];
+
+  potentiallyColliding.forEach(function(pair){
+    distSquared = Math.pow(pair.a.position.x - pair.b.position.x, 2) +
+                  Math.pow(pair.a.position.y - pair.b.position.y, 2);
+    if(distSquared < Math.pow(pair.a.radius + pair.b.radius, 2)) {
+      collisions.push(pair);
+    }
+  });
+
+  return collisions;
 }
 
 /**
@@ -349,19 +468,13 @@ function handleAsteroidsCollisions() {
     active.push(asteroid);
   });
 
-  var collisions = [];
-  var distSquared = undefined;
-  potentiallyColliding.forEach(function(pair){
-    distSquared = Math.pow(pair.a.position.x - pair.b.position.x, 2) +
-                  Math.pow(pair.a.position.y - pair.b.position.y, 2);
-    if(distSquared < Math.pow(pair.a.radius + pair.b.radius, 2)) {
-      pair.a.color = "green";
-      pair.b.color = "green";
-      collisions.push(pair);
-    }
-  });
+  var collisions = determineCollisions(potentiallyColliding);
 
   collisions.forEach(function(pair) {
+
+    pair.a.color = "green";
+    pair.b.color = "green";
+
     // find the normal of collision
     var collisionNormal = {
       x: pair.a.position.x - pair.b.position.x,
@@ -397,8 +510,44 @@ function handleAsteroidsCollisions() {
   });
 }
 
+function handleAsteroidShotCollisions() {
+  var shotsCnt = this.shots.length;
+  var asteroidsCnt = this.asteroids.length;
+
+  var i = 0, j = 0;
+  var shot, asteroid;
+  var potentiallyColliding = [];
+
+  if(shotsCnt == 0 || asteroidsCnt == 0) return;
+
+  do {
+    shot = this.shots[i];
+    asteroid = this.asteroids[j];
+    if(shot.position.x < asteroid.position.x - asteroid.radius && i < shotsCnt) {
+      i++;
+    } else if(shot.position.x > asteroid.position.x + asteroid.radius && j < asteroidsCnt) {
+      j++;
+    } else {
+      // We have a potential collision
+      potentiallyColliding.push({a: shot, b: asteroid});
+
+      if(shot.position.x < asteroid.position.x) i++;
+      else j++;
+    }
+  } while (i < shotsCnt && j < asteroidsCnt);
+
+  var collisions = determineCollisions(potentiallyColliding);
+  var self = this;
+  collisions.forEach(function(pair) {
+    // Make shot no longer valid
+    pair.a.position = {x: INVALID_POSITION, y: INVALID_POSITION};
+    var newAsteroids = pair.b.hit();
+    for(var i = 0; i < newAsteroids.length; i++) self.asteroids.push(newAsteroids[i]);
+  });
+}
+
 /**
- * @function handleAsteroidsCollisions
+ * @function handleCollisions
  * Handles all collisions, between asteroids, asteroids and shots,
  * asteroids and ship
  */
@@ -412,6 +561,7 @@ function handleCollisions() {
   });
 
   handleAsteroidsCollisions.call(this);
+  handleAsteroidShotCollisions.call(this);
 }
 
 /**
@@ -421,7 +571,8 @@ function handleCollisions() {
  * the number of milliseconds passed since the last frame.
  */
 EntityManager.prototype.update = function(elapsedTime) {
-  removeInvalidShots.call(this);
+  this.shots = removeInvalidEntities.call(this, this.shots);
+  this.asteroids = removeInvalidEntities.call(this, this.asteroids);
 
   handleCollisions.call(this);
 

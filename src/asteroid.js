@@ -6,7 +6,11 @@ const SMALL_VELOCITY = 0.7;
 const LARGE_RADIUS = 20;
 const MEDIUM_RADIUS = 15;
 const SMALL_RADIUS = 10;
+const LARGE_LIVES = 3;
+const MEDIUM_LIVES = 2;
+const SMALL_LIVES = 1;
 const ASTEROID_COLOR = '#C90018';
+const INVALID_POSITION = -300;
 
 /**
  * @module exports the Asteroid base class
@@ -23,22 +27,35 @@ module.exports = exports = {
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function Asteroid(position, canvas) {
+function Asteroid(position, angle, canvas) {
   this.position = {
     x: position.x,
     y: position.y
   };
-  this.angle = Math.random() * 2 - 1;
+  this.angle = angle;
   this.color = ASTEROID_COLOR;
+  this.canvas = canvas;
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
 }
 
 /**
- * @function updates the asteroid object
+ * @function hit
+ * decreases asteroid lives
+ */
+Asteroid.prototype.hit = function() {
+  if(this.lives > 0) this.lives--;
+}
+
+/**
+ * @function update
+ * updates the asteroid object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Asteroid.prototype.update = function(time) {
+
+  if(this.position.x == INVALID_POSITION && this.position.y == INVALID_POSITION) return;
+
   // Apply velocity
   this.position.x -= this.velocity.x;
   this.position.y -= this.velocity.y;
@@ -51,7 +68,8 @@ Asteroid.prototype.update = function(time) {
 }
 
 /**
- * @function renders the medium asteroid object into the provided context
+ * @function render
+ * renders the medium asteroid object into the provided context
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  * {CanvasRenderingContext2D} ctx the context to render into
  */
@@ -70,11 +88,11 @@ Asteroid.prototype.render = function(time, ctx) {
 }
 
 /**
-  * @function calculateVelocity
-  * calculates a velocity based on asteroids angle and max velocity
-  * @param {Float} angle
-  * @param {Float} maxVelocity max speed of an asteroid
-  */
+ * @function calculateVelocity
+ * calculates a velocity based on asteroids angle and max velocity
+ * @param {Float} angle
+ * @param {Float} maxVelocity max speed of an asteroid
+ */
 function calculateVelocity(angle, maxVelocity) {
   return {
     x: Math.sin(angle) * maxVelocity,
@@ -83,16 +101,65 @@ function calculateVelocity(angle, maxVelocity) {
 }
 
 /**
+ * @function setInvalidPosition
+ * sets asteroid's position to invalid coords
+ */
+function setInvalidPosition() {
+  this.position = {x: INVALID_POSITION, y: INVALID_POSITION};
+}
+
+/**
+ * @function getNewAngles
+ * generates new angles based on original angle
+ */
+function getNewAngles() {
+  var angle;
+  var angles = [];
+  var random = Math.floor(Math.random() * 2) + 2;
+  
+  for(var x = 1; x <= random; x++) {
+    angle = this.angle % 2*Math.PI;
+    angles.push((angle - (x*Math.PI/2)) % 2*Math.PI);
+  }
+
+  return angles;
+}
+
+/**
  * @constructor LargeAsteroid
  * Creates a new large asteroid object
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function LargeAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+function LargeAsteroid(position, angle, canvas) {
+  Asteroid.call(this, position, angle, canvas);
 
   this.radius = LARGE_RADIUS;
+  this.lives = LARGE_LIVES;
   this.velocity = calculateVelocity(this.angle, LARGE_VELOCITY);
+}
+
+/**
+ * @function hit
+ * decreases asteroid lives
+ */
+LargeAsteroid.prototype.hit = function() {
+  Asteroid.prototype.hit.call(this);
+
+  var newAsteroids = [];
+
+  if(this.lives == 0) {
+    var angles = getNewAngles.call(this);
+    var position;
+    var self = this;
+    angles.forEach(function(angle) {
+      position = {x: self.position.x + Math.sin(angle) * MEDIUM_RADIUS, y: self.position.y + Math.cos(angle) * MEDIUM_RADIUS};
+      newAsteroids.push(new MediumAsteroid(position, angle, self.canvas))
+    });
+    setInvalidPosition.call(this);
+  }
+
+  return newAsteroids;
 }
 
 /**
@@ -119,11 +186,35 @@ LargeAsteroid.prototype.render = function(time, ctx) {
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function MediumAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+function MediumAsteroid(position, angle, canvas) {
+  Asteroid.call(this, position, angle, canvas);
 
   this.radius = MEDIUM_RADIUS;
+  this.lives = MEDIUM_LIVES;
   this.velocity = calculateVelocity(this.angle, MEDIUM_VELOCITY);
+}
+
+/**
+ * @function hit
+ * decreases asteroid lives
+ */
+MediumAsteroid.prototype.hit = function() {
+  Asteroid.prototype.hit.call(this);
+
+  var newAsteroids = [];
+
+  if(this.lives == 0) {
+    var angles = getNewAngles.call(this);
+    var position;
+    var self = this;
+    angles.forEach(function(angle) {
+      position = {x: self.position.x + Math.sin(angle) * SMALL_RADIUS, y: self.position.y + Math.cos(angle) * SMALL_RADIUS};
+      newAsteroids.push(new SmallAsteroid(position, angle, self.canvas))
+    });
+    setInvalidPosition.call(this);
+  }
+
+  return newAsteroids;
 }
 
 /**
@@ -150,11 +241,23 @@ MediumAsteroid.prototype.render = function(time, ctx) {
  * @param {Postition} position object specifying an x and y
  * @param {canvasDOMElement} canvas world size
  */
-function SmallAsteroid(position, canvas) {
-  Asteroid.call(this, position, canvas);
+function SmallAsteroid(position, angle, canvas) {
+  Asteroid.call(this, position, angle, canvas);
 
   this.radius = SMALL_RADIUS;
+  this.lives = SMALL_LIVES;
   this.velocity = calculateVelocity(this.angle, SMALL_VELOCITY);
+}
+
+/**
+ * @function hit
+ * decreases asteroid lives
+ */
+SmallAsteroid.prototype.hit = function() {
+  Asteroid.prototype.hit.call(this);
+
+  if(this.lives == 0) setInvalidPosition.call(this);
+  return [];
 }
 
 /**

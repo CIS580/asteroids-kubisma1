@@ -1,6 +1,7 @@
 "use strict";
 
 const TOLERANCE = 10;
+const INVALID_POSITION = -300;
 const ASTEROID_COLOR = '#C90018';
 
 /* Classes */
@@ -53,17 +54,32 @@ EntityManager.prototype.addAsteroid = function(asteroid) {
 }
 
 /**
- * @function removeInvalidShots
- * Goes over all shots and removes all which are off the screen
+ * @function removeInvalidEntities
+ * Goes over all given entities and removes all which are off the screen
  */
-function removeInvalidShots() {
+function removeInvalidEntities(entities) {
   var self = this;
-  this.shots = this.shots.filter(function(shot){
-    return shot.position.x + TOLERANCE >= 0 &&
-           shot.position.y + TOLERANCE >= 0 &&
-           shot.position.x - TOLERANCE <= self.worldWidth &&
-           shot.position.y - TOLERANCE <= self.worldHeight
+  return entities.filter(function(entity) {
+    return entity.position.x + TOLERANCE >= 0 &&
+           entity.position.y + TOLERANCE >= 0 &&
+           entity.position.x - TOLERANCE <= self.worldWidth &&
+           entity.position.y - TOLERANCE <= self.worldHeight
   });
+}
+
+function determineCollisions(potentiallyColliding) {
+  var distSquared = undefined;
+  var collisions = [];
+
+  potentiallyColliding.forEach(function(pair){
+    distSquared = Math.pow(pair.a.position.x - pair.b.position.x, 2) +
+                  Math.pow(pair.a.position.y - pair.b.position.y, 2);
+    if(distSquared < Math.pow(pair.a.radius + pair.b.radius, 2)) {
+      collisions.push(pair);
+    }
+  });
+
+  return collisions;
 }
 
 /**
@@ -88,19 +104,13 @@ function handleAsteroidsCollisions() {
     active.push(asteroid);
   });
 
-  var collisions = [];
-  var distSquared = undefined;
-  potentiallyColliding.forEach(function(pair){
-    distSquared = Math.pow(pair.a.position.x - pair.b.position.x, 2) +
-                  Math.pow(pair.a.position.y - pair.b.position.y, 2);
-    if(distSquared < Math.pow(pair.a.radius + pair.b.radius, 2)) {
-      pair.a.color = "green";
-      pair.b.color = "green";
-      collisions.push(pair);
-    }
-  });
+  var collisions = determineCollisions(potentiallyColliding);
 
   collisions.forEach(function(pair) {
+
+    pair.a.color = "green";
+    pair.b.color = "green";
+
     // find the normal of collision
     var collisionNormal = {
       x: pair.a.position.x - pair.b.position.x,
@@ -136,8 +146,44 @@ function handleAsteroidsCollisions() {
   });
 }
 
+function handleAsteroidShotCollisions() {
+  var shotsCnt = this.shots.length;
+  var asteroidsCnt = this.asteroids.length;
+
+  var i = 0, j = 0;
+  var shot, asteroid;
+  var potentiallyColliding = [];
+
+  if(shotsCnt == 0 || asteroidsCnt == 0) return;
+
+  do {
+    shot = this.shots[i];
+    asteroid = this.asteroids[j];
+    if(shot.position.x < asteroid.position.x - asteroid.radius && i < shotsCnt) {
+      i++;
+    } else if(shot.position.x > asteroid.position.x + asteroid.radius && j < asteroidsCnt) {
+      j++;
+    } else {
+      // We have a potential collision
+      potentiallyColliding.push({a: shot, b: asteroid});
+
+      if(shot.position.x < asteroid.position.x) i++;
+      else j++;
+    }
+  } while (i < shotsCnt && j < asteroidsCnt);
+
+  var collisions = determineCollisions(potentiallyColliding);
+  var self = this;
+  collisions.forEach(function(pair) {
+    // Make shot no longer valid
+    pair.a.position = {x: INVALID_POSITION, y: INVALID_POSITION};
+    var newAsteroids = pair.b.hit();
+    for(var i = 0; i < newAsteroids.length; i++) self.asteroids.push(newAsteroids[i]);
+  });
+}
+
 /**
- * @function handleAsteroidsCollisions
+ * @function handleCollisions
  * Handles all collisions, between asteroids, asteroids and shots,
  * asteroids and ship
  */
@@ -151,6 +197,7 @@ function handleCollisions() {
   });
 
   handleAsteroidsCollisions.call(this);
+  handleAsteroidShotCollisions.call(this);
 }
 
 /**
@@ -160,7 +207,8 @@ function handleCollisions() {
  * the number of milliseconds passed since the last frame.
  */
 EntityManager.prototype.update = function(elapsedTime) {
-  removeInvalidShots.call(this);
+  this.shots = removeInvalidEntities.call(this, this.shots);
+  this.asteroids = removeInvalidEntities.call(this, this.asteroids);
 
   handleCollisions.call(this);
 
