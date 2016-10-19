@@ -64,7 +64,11 @@ masterLoop(performance.now());
  */
 function update(elapsedTime) {
   entityManager.update(elapsedTime);
-  // TODO: Update the game objects
+  if(entityManager.asteroids.length == 0) {
+    level++;
+    player.reset();
+    generateAsteroids(level);
+  }
 }
 
 /**
@@ -78,6 +82,9 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   entityManager.render(elapsedTime, ctx);
+  ctx.font = "bold 1em Georgia";
+  ctx.fillStyle = "#fff";
+  ctx.fillText("Level: " + level, canvas.width - 80, 20);
 }
 
 },{"./asteroid.js":2,"./entity-manager.js":3,"./game.js":4,"./player.js":5}],2:[function(require,module,exports){
@@ -89,6 +96,9 @@ const SMALL_VELOCITY = 0.7;
 const LARGE_RADIUS = 20;
 const MEDIUM_RADIUS = 15;
 const SMALL_RADIUS = 10;
+const LARGE_POINTS = 20;
+const MEDIUM_POINTS = 35;
+const SMALL_POINTS = 50;
 const LARGE_LIVES = 3;
 const MEDIUM_LIVES = 2;
 const SMALL_LIVES = 1;
@@ -199,7 +209,7 @@ function getNewAngles() {
   var angle;
   var angles = [];
   var random = Math.floor(Math.random() * 2) + 2;
-  
+
   for(var x = 1; x <= random; x++) {
     angle = this.angle % 2*Math.PI;
     angles.push((angle - (x*Math.PI/2)) % 2*Math.PI);
@@ -243,6 +253,14 @@ LargeAsteroid.prototype.hit = function() {
   }
 
   return newAsteroids;
+}
+
+/**
+ * @function getPoints
+ * get points for a hit
+ */
+LargeAsteroid.prototype.getPoints = function() {
+  return LARGE_POINTS;
 }
 
 /**
@@ -301,6 +319,14 @@ MediumAsteroid.prototype.hit = function() {
 }
 
 /**
+ * @function getPoints
+ * get points for a hit
+ */
+MediumAsteroid.prototype.getPoints = function() {
+  return MEDIUM_POINTS;
+}
+
+/**
  * @function updates the medium asteroid object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
@@ -341,6 +367,14 @@ SmallAsteroid.prototype.hit = function() {
 
   if(this.lives == 0) setInvalidPosition.call(this);
   return [];
+}
+
+/**
+ * @function getPoints
+ * get points for a hit
+ */
+SmallAsteroid.prototype.getPoints = function() {
+  return SMALL_POINTS;
 }
 
 /**
@@ -446,6 +480,26 @@ function determineCollisions(potentiallyColliding) {
   return collisions;
 }
 
+function handleAsteroidPlayerCollisions() {
+
+  if(this.player.protectionTimer > 0) return;
+
+  var potentiallyColliding = [];
+  var player = this.player;
+  var asteroid;
+
+  for(var i = 0; i < this.asteroids.length; i++) {
+    asteroid = this.asteroids[i];
+    if(asteroid.position.x > player.position.x + player.radius) break;
+    if(asteroid.position.x < player.position.x - player.radius) continue;
+
+    potentiallyColliding.push({a: player, b: asteroid});
+  }
+
+  var collisions = determineCollisions(potentiallyColliding);
+  if(collisions.length > 0) player.hit();
+}
+
 /**
  * @function handleAsteroidsCollisions
  * Goes over all asteroids and solves all their collisions
@@ -542,6 +596,8 @@ function handleAsteroidShotCollisions() {
     // Make shot no longer valid
     pair.a.position = {x: INVALID_POSITION, y: INVALID_POSITION};
     var newAsteroids = pair.b.hit();
+
+    if(newAsteroids.length > 0) self.player.addPoints(pair.b.getPoints());
     for(var i = 0; i < newAsteroids.length; i++) self.asteroids.push(newAsteroids[i]);
   });
 }
@@ -560,6 +616,7 @@ function handleCollisions() {
     return a.position.x - b.position.x;
   });
 
+  handleAsteroidPlayerCollisions.call(this);
   handleAsteroidsCollisions.call(this);
   handleAsteroidShotCollisions.call(this);
 }
@@ -665,7 +722,8 @@ Game.prototype.loop = function(newTime) {
 "use strict";
 
 const MS_PER_FRAME = 1000/8;
-const MAX_VELOCITY = 3;
+const MAX_VELOCITY = 2.6;
+const PROTECTION_TIMEOUT = 3000;
 
 /* Classes */
 const Shot = require('./shot.js');
@@ -695,7 +753,10 @@ function Player(position, canvas, entityManager) {
     y: 0
   }
   this.angle = 0;
-  this.radius  = 64;
+  this.radius = 12;
+  this.lives = 3;
+  this.score = 0;
+  this.protectionTimer = PROTECTION_TIMEOUT;
   this.thrusting = false;
   this.shooting = false;
   this.steerLeft = false;
@@ -745,11 +806,38 @@ function Player(position, canvas, entityManager) {
   }
 }
 
+
+Player.prototype.reset = function() {
+  this.protectionTimer = PROTECTION_TIMEOUT;
+  this.position = {x: this.worldWidth / 2, y: this.worldHeight / 2};
+  this.velocity = {x: 0, y: 0};
+  this.angle = 0;
+}
+
+
+Player.prototype.hit = function() {
+  if(this.lives > 0) {
+    this.lives--;
+    this.reset();
+  }
+}
+
+Player.prototype.addPoints = function(score) {
+  this.score += score;
+}
+
 /**
  * @function update updates the player object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Player.prototype.update = function(time) {
+
+  if(this.protectionTimer > 0) {
+    this.protectionTimer -= time;
+    return;
+  }
+
+  this.protectionTimer = 0;
 
   this.timer += time;
   if(this.shooting && this.timer > MS_PER_FRAME) {
@@ -797,10 +885,22 @@ Player.prototype.update = function(time) {
 Player.prototype.render = function(time, ctx) {
   ctx.save();
 
+  ctx.fillStyle = "#fff";
+
+  if(this.protectionTimer > 0) {
+    ctx.font = "bold 3em Georgia";
+    ctx.fillText(Math.ceil(this.protectionTimer / 1000), (this.worldWidth / 2) - 15, this.worldHeight / 2);
+  }
+
+  ctx.font = "bold 1em Georgia";
+  ctx.fillText("Lives: " + this.lives, 10, 20);
+  ctx.fillText("Score: " + this.score, 10, 40);
+
   // Draw player's ship
   ctx.translate(this.position.x, this.position.y);
   ctx.rotate(-this.angle);
   ctx.beginPath();
+  //ctx.arc(0,0,this.radius,0,2*Math.PI);
   ctx.moveTo(0, -10);
   ctx.lineTo(-10, 10);
   ctx.lineTo(0, 0);

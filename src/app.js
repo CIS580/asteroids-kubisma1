@@ -63,7 +63,11 @@ masterLoop(performance.now());
  */
 function update(elapsedTime) {
   entityManager.update(elapsedTime);
-  // TODO: Update the game objects
+  if(entityManager.asteroids.length == 0) {
+    level++;
+    player.reset();
+    generateAsteroids(level);
+  }
 }
 
 /**
@@ -77,4 +81,7 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   entityManager.render(elapsedTime, ctx);
+  ctx.font = "bold 1em Georgia";
+  ctx.fillStyle = "#fff";
+  ctx.fillText("Level: " + level, canvas.width - 80, 20);
 }

@@ -1,7 +1,8 @@
 "use strict";
 
 const MS_PER_FRAME = 1000/8;
-const MAX_VELOCITY = 3;
+const MAX_VELOCITY = 2.6;
+const PROTECTION_TIMEOUT = 3000;
 
 /* Classes */
 const Shot = require('./shot.js');
@@ -31,7 +32,10 @@ function Player(position, canvas, entityManager) {
     y: 0
   }
   this.angle = 0;
-  this.radius  = 64;
+  this.radius = 12;
+  this.lives = 3;
+  this.score = 0;
+  this.protectionTimer = PROTECTION_TIMEOUT;
   this.thrusting = false;
   this.shooting = false;
   this.steerLeft = false;
@@ -81,11 +85,38 @@ function Player(position, canvas, entityManager) {
   }
 }
 
+
+Player.prototype.reset = function() {
+  this.protectionTimer = PROTECTION_TIMEOUT;
+  this.position = {x: this.worldWidth / 2, y: this.worldHeight / 2};
+  this.velocity = {x: 0, y: 0};
+  this.angle = 0;
+}
+
+
+Player.prototype.hit = function() {
+  if(this.lives > 0) {
+    this.lives--;
+    this.reset();
+  }
+}
+
+Player.prototype.addPoints = function(score) {
+  this.score += score;
+}
+
 /**
  * @function update updates the player object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Player.prototype.update = function(time) {
+
+  if(this.protectionTimer > 0) {
+    this.protectionTimer -= time;
+    return;
+  }
+
+  this.protectionTimer = 0;
 
   this.timer += time;
   if(this.shooting && this.timer > MS_PER_FRAME) {
@@ -133,10 +164,22 @@ Player.prototype.update = function(time) {
 Player.prototype.render = function(time, ctx) {
   ctx.save();
 
+  ctx.fillStyle = "#fff";
+
+  if(this.protectionTimer > 0) {
+    ctx.font = "bold 3em Georgia";
+    ctx.fillText(Math.ceil(this.protectionTimer / 1000), (this.worldWidth / 2) - 15, this.worldHeight / 2);
+  }
+
+  ctx.font = "bold 1em Georgia";
+  ctx.fillText("Lives: " + this.lives, 10, 20);
+  ctx.fillText("Score: " + this.score, 10, 40);
+
   // Draw player's ship
   ctx.translate(this.position.x, this.position.y);
   ctx.rotate(-this.angle);
   ctx.beginPath();
+  //ctx.arc(0,0,this.radius,0,2*Math.PI);
   ctx.moveTo(0, -10);
   ctx.lineTo(-10, 10);
   ctx.lineTo(0, 0);

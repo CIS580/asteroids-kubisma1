@@ -82,6 +82,26 @@ function determineCollisions(potentiallyColliding) {
   return collisions;
 }
 
+function handleAsteroidPlayerCollisions() {
+
+  if(this.player.protectionTimer > 0) return;
+
+  var potentiallyColliding = [];
+  var player = this.player;
+  var asteroid;
+
+  for(var i = 0; i < this.asteroids.length; i++) {
+    asteroid = this.asteroids[i];
+    if(asteroid.position.x > player.position.x + player.radius) break;
+    if(asteroid.position.x < player.position.x - player.radius) continue;
+
+    potentiallyColliding.push({a: player, b: asteroid});
+  }
+
+  var collisions = determineCollisions(potentiallyColliding);
+  if(collisions.length > 0) player.hit();
+}
+
 /**
  * @function handleAsteroidsCollisions
  * Goes over all asteroids and solves all their collisions
@@ -178,6 +198,8 @@ function handleAsteroidShotCollisions() {
     // Make shot no longer valid
     pair.a.position = {x: INVALID_POSITION, y: INVALID_POSITION};
     var newAsteroids = pair.b.hit();
+
+    if(newAsteroids.length > 0) self.player.addPoints(pair.b.getPoints());
     for(var i = 0; i < newAsteroids.length; i++) self.asteroids.push(newAsteroids[i]);
   });
 }
@@ -196,6 +218,7 @@ function handleCollisions() {
     return a.position.x - b.position.x;
   });
 
+  handleAsteroidPlayerCollisions.call(this);
   handleAsteroidsCollisions.call(this);
   handleAsteroidShotCollisions.call(this);
 }

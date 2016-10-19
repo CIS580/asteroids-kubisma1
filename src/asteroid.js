@@ -6,6 +6,9 @@ const SMALL_VELOCITY = 0.7;
 const LARGE_RADIUS = 20;
 const MEDIUM_RADIUS = 15;
 const SMALL_RADIUS = 10;
+const LARGE_POINTS = 20;
+const MEDIUM_POINTS = 35;
+const SMALL_POINTS = 50;
 const LARGE_LIVES = 3;
 const MEDIUM_LIVES = 2;
 const SMALL_LIVES = 1;
@@ -116,7 +119,7 @@ function getNewAngles() {
   var angle;
   var angles = [];
   var random = Math.floor(Math.random() * 2) + 2;
-  
+
   for(var x = 1; x <= random; x++) {
     angle = this.angle % 2*Math.PI;
     angles.push((angle - (x*Math.PI/2)) % 2*Math.PI);
@@ -160,6 +163,14 @@ LargeAsteroid.prototype.hit = function() {
   }
 
   return newAsteroids;
+}
+
+/**
+ * @function getPoints
+ * get points for a hit
+ */
+LargeAsteroid.prototype.getPoints = function() {
+  return LARGE_POINTS;
 }
 
 /**
@@ -218,6 +229,14 @@ MediumAsteroid.prototype.hit = function() {
 }
 
 /**
+ * @function getPoints
+ * get points for a hit
+ */
+MediumAsteroid.prototype.getPoints = function() {
+  return MEDIUM_POINTS;
+}
+
+/**
  * @function updates the medium asteroid object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
@@ -258,6 +277,14 @@ SmallAsteroid.prototype.hit = function() {
 
   if(this.lives == 0) setInvalidPosition.call(this);
   return [];
+}
+
+/**
+ * @function getPoints
+ * get points for a hit
+ */
+SmallAsteroid.prototype.getPoints = function() {
+  return SMALL_POINTS;
 }
 
 /**
