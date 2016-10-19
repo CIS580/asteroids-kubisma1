@@ -6,6 +6,9 @@ const PROTECTION_TIMEOUT = 3000;
 
 /* Classes */
 const Shot = require('./shot.js');
+const ResourceManager = require('./resource-manager.js');
+
+var resourceManager = new ResourceManager();
 
 /**
  * @module exports the Player class
@@ -85,7 +88,10 @@ function Player(position, canvas, entityManager) {
   }
 }
 
-
+/**
+ * @function reset
+ * Resets player to initial state
+ */
 Player.prototype.reset = function() {
   this.protectionTimer = PROTECTION_TIMEOUT;
   this.position = {x: this.worldWidth / 2, y: this.worldHeight / 2};
@@ -93,7 +99,10 @@ Player.prototype.reset = function() {
   this.angle = 0;
 }
 
-
+/**
+ * @function hit
+ * Decreases lives because of being hit
+ */
 Player.prototype.hit = function() {
   if(this.lives > 0) {
     this.lives--;
@@ -101,6 +110,10 @@ Player.prototype.hit = function() {
   }
 }
 
+/**
+ * @function addPoints
+ * Adds points to the player as a result of hitting the asteroid
+ */
 Player.prototype.addPoints = function(score) {
   this.score += score;
 }
@@ -122,6 +135,7 @@ Player.prototype.update = function(time) {
   if(this.shooting && this.timer > MS_PER_FRAME) {
     this.timer = 0;
     this.entityManager.addShot(new Shot(this.position, this.angle));
+    resourceManager.fire.play();
   }
 
   // Apply angular velocity

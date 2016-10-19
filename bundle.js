@@ -13,11 +13,14 @@ var game = new Game(canvas, update, render);
 var entityManager = new EntityManager(canvas);
 var player = new Player({x: canvas.width/2, y: canvas.height/2}, canvas, entityManager);
 entityManager.addPlayer(player);
+var overlayDiv = document.getElementById('overlay');
 
 var level = 1;
-var score = 0;
 
-
+/**
+ * @function generatePosition
+ * generates a random position inside the canvas
+ */
 function generatePosition() {
   return {
     x: Math.floor(Math.random() * canvas.width + 1),
@@ -25,7 +28,13 @@ function generatePosition() {
   }
 }
 
+/**
+ * @function generateAsteroids
+ * generates asteroids to the game
+ */
 function generateAsteroids(level) {
+
+  entityManager.asteroids = [];
 
   for(var i = 0; i < 4 + Math.floor(level * 1/4); i++) {
     entityManager.addAsteroid(new Asteroid.LargeAsteroid(generatePosition(),Math.random() * 2 - 1,canvas));
@@ -51,8 +60,12 @@ var masterLoop = function(timestamp) {
   game.loop(timestamp);
   window.requestAnimationFrame(masterLoop);
 }
-masterLoop(performance.now());
 
+function newGame() {
+  overlayDiv.style.transition = "all .2s ease-out";
+  overlayDiv.style.display = "none";
+  masterLoop(performance.now());
+}
 
 /**
  * @function update
@@ -63,8 +76,16 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
+  var prevLives = player.lives;
+
   entityManager.update(elapsedTime);
-  if(entityManager.asteroids.length == 0) {
+
+  if(player.lives == 0) return; // TODO Game Over
+
+  if(prevLives != player.lives) {
+    player.reset();
+    generateAsteroids(level);
+  } else if(entityManager.asteroids.length == 0) {
     level++;
     player.reset();
     generateAsteroids(level);
@@ -404,6 +425,9 @@ const ASTEROID_COLOR = '#C90018';
 
 /* Classes */
 const Vector = require('./vector.js');
+const ResourceManager = require('./resource-manager.js');
+
+var resourceManager = new ResourceManager();
 
 /**
  * @module exports the EntityManager class
@@ -465,6 +489,11 @@ function removeInvalidEntities(entities) {
   });
 }
 
+/**
+ * @function determineCollisions
+ * determines if pair of objects is colliding
+ * {Array} potentiallyColliding array of objects
+ */
 function determineCollisions(potentiallyColliding) {
   var distSquared = undefined;
   var collisions = [];
@@ -480,6 +509,10 @@ function determineCollisions(potentiallyColliding) {
   return collisions;
 }
 
+/**
+ * @function handleAsteroidPlayerCollisions
+ * determines if asteroid has hit the player
+ */
 function handleAsteroidPlayerCollisions() {
 
   if(this.player.protectionTimer > 0) return;
@@ -497,7 +530,10 @@ function handleAsteroidPlayerCollisions() {
   }
 
   var collisions = determineCollisions(potentiallyColliding);
-  if(collisions.length > 0) player.hit();
+  if(collisions.length > 0) {
+    player.hit();
+    resourceManager.hit.play();
+  }
 }
 
 /**
@@ -525,9 +561,6 @@ function handleAsteroidsCollisions() {
   var collisions = determineCollisions(potentiallyColliding);
 
   collisions.forEach(function(pair) {
-
-    pair.a.color = "green";
-    pair.b.color = "green";
 
     // find the normal of collision
     var collisionNormal = {
@@ -562,8 +595,15 @@ function handleAsteroidsCollisions() {
     pair.b.velocity.x = b.x;
     pair.b.velocity.y = b.y;
   });
+
+  if(collisions.length > 0) resourceManager.collision.play();
 }
 
+/**
+ * @function handleAsteroidShotCollisions
+ * Goes over all asteroids and shots and solves all their collisions
+ * if there is any
+ */
 function handleAsteroidShotCollisions() {
   var shotsCnt = this.shots.length;
   var asteroidsCnt = this.asteroids.length;
@@ -597,9 +637,14 @@ function handleAsteroidShotCollisions() {
     pair.a.position = {x: INVALID_POSITION, y: INVALID_POSITION};
     var newAsteroids = pair.b.hit();
 
-    if(newAsteroids.length > 0) self.player.addPoints(pair.b.getPoints());
+    if(pair.b.lives == 0) {
+      self.player.addPoints(pair.b.getPoints());
+      resourceManager.explosion.play();
+    }
+
     for(var i = 0; i < newAsteroids.length; i++) self.asteroids.push(newAsteroids[i]);
   });
+
 }
 
 /**
@@ -660,7 +705,7 @@ EntityManager.prototype.render = function(elapsedTime, ctx) {
   this.player.render(elapsedTime, ctx);
 }
 
-},{"./vector.js":7}],4:[function(require,module,exports){
+},{"./resource-manager.js":6,"./vector.js":8}],4:[function(require,module,exports){
 "use strict";
 
 /**
@@ -727,6 +772,9 @@ const PROTECTION_TIMEOUT = 3000;
 
 /* Classes */
 const Shot = require('./shot.js');
+const ResourceManager = require('./resource-manager.js');
+
+var resourceManager = new ResourceManager();
 
 /**
  * @module exports the Player class
@@ -806,7 +854,10 @@ function Player(position, canvas, entityManager) {
   }
 }
 
-
+/**
+ * @function reset
+ * Resets player to initial state
+ */
 Player.prototype.reset = function() {
   this.protectionTimer = PROTECTION_TIMEOUT;
   this.position = {x: this.worldWidth / 2, y: this.worldHeight / 2};
@@ -814,7 +865,10 @@ Player.prototype.reset = function() {
   this.angle = 0;
 }
 
-
+/**
+ * @function hit
+ * Decreases lives because of being hit
+ */
 Player.prototype.hit = function() {
   if(this.lives > 0) {
     this.lives--;
@@ -822,6 +876,10 @@ Player.prototype.hit = function() {
   }
 }
 
+/**
+ * @function addPoints
+ * Adds points to the player as a result of hitting the asteroid
+ */
 Player.prototype.addPoints = function(score) {
   this.score += score;
 }
@@ -843,6 +901,7 @@ Player.prototype.update = function(time) {
   if(this.shooting && this.timer > MS_PER_FRAME) {
     this.timer = 0;
     this.entityManager.addShot(new Shot(this.position, this.angle));
+    resourceManager.fire.play();
   }
 
   // Apply angular velocity
@@ -922,7 +981,37 @@ Player.prototype.render = function(time, ctx) {
   ctx.restore();
 }
 
-},{"./shot.js":6}],6:[function(require,module,exports){
+},{"./resource-manager.js":6,"./shot.js":7}],6:[function(require,module,exports){
+"use strict";
+
+/**
+ * @module exports the ResourceManager class
+ */
+module.exports = exports = ResourceManager;
+
+function ResourceManager() {
+  // Asteroids collision
+  this.collision = new Audio();
+  this.collision.src = './assets/music/collision.wav';
+  this.collision.volume = 0.5;
+
+  // Player shoots
+  this.fire = new Audio();
+  this.fire.src = './assets/music/fire.wav';
+  this.fire.volume = 0.5;
+
+  // Player is being hit
+  this.hit = new Audio();
+  this.hit.src = './assets/music/hit.wav';
+  this.hit.volume = 0.5;
+
+  // Asteroid explosion
+  this.explosion = new Audio();
+  this.explosion.src = './assets/music/explosion.wav';
+  this.explosion.volume = 0.5;
+}
+
+},{}],7:[function(require,module,exports){
 "use strict";
 
 const MAX_VELOCITY = 5;
@@ -988,7 +1077,7 @@ Shot.prototype.render = function(time, ctx) {
   ctx.restore();
 }
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 "use strict";
 
 module.exports = exports = {

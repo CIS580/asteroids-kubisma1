@@ -12,11 +12,14 @@ var game = new Game(canvas, update, render);
 var entityManager = new EntityManager(canvas);
 var player = new Player({x: canvas.width/2, y: canvas.height/2}, canvas, entityManager);
 entityManager.addPlayer(player);
+var overlayDiv = document.getElementById('overlay');
 
 var level = 1;
-var score = 0;
 
-
+/**
+ * @function generatePosition
+ * generates a random position inside the canvas
+ */
 function generatePosition() {
   return {
     x: Math.floor(Math.random() * canvas.width + 1),
@@ -24,7 +27,13 @@ function generatePosition() {
   }
 }
 
+/**
+ * @function generateAsteroids
+ * generates asteroids to the game
+ */
 function generateAsteroids(level) {
+
+  entityManager.asteroids = [];
 
   for(var i = 0; i < 4 + Math.floor(level * 1/4); i++) {
     entityManager.addAsteroid(new Asteroid.LargeAsteroid(generatePosition(),Math.random() * 2 - 1,canvas));
@@ -50,8 +59,12 @@ var masterLoop = function(timestamp) {
   game.loop(timestamp);
   window.requestAnimationFrame(masterLoop);
 }
-masterLoop(performance.now());
 
+function newGame() {
+  overlayDiv.style.transition = "all .2s ease-out";
+  overlayDiv.style.display = "none";
+  masterLoop(performance.now());
+}
 
 /**
  * @function update
@@ -62,8 +75,16 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
+  var prevLives = player.lives;
+
   entityManager.update(elapsedTime);
-  if(entityManager.asteroids.length == 0) {
+
+  if(player.lives == 0) return; // TODO Game Over
+
+  if(prevLives != player.lives) {
+    player.reset();
+    generateAsteroids(level);
+  } else if(entityManager.asteroids.length == 0) {
     level++;
     player.reset();
     generateAsteroids(level);

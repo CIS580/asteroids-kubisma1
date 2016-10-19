@@ -6,6 +6,9 @@ const ASTEROID_COLOR = '#C90018';
 
 /* Classes */
 const Vector = require('./vector.js');
+const ResourceManager = require('./resource-manager.js');
+
+var resourceManager = new ResourceManager();
 
 /**
  * @module exports the EntityManager class
@@ -67,6 +70,11 @@ function removeInvalidEntities(entities) {
   });
 }
 
+/**
+ * @function determineCollisions
+ * determines if pair of objects is colliding
+ * {Array} potentiallyColliding array of objects
+ */
 function determineCollisions(potentiallyColliding) {
   var distSquared = undefined;
   var collisions = [];
@@ -82,6 +90,10 @@ function determineCollisions(potentiallyColliding) {
   return collisions;
 }
 
+/**
+ * @function handleAsteroidPlayerCollisions
+ * determines if asteroid has hit the player
+ */
 function handleAsteroidPlayerCollisions() {
 
   if(this.player.protectionTimer > 0) return;
@@ -99,7 +111,10 @@ function handleAsteroidPlayerCollisions() {
   }
 
   var collisions = determineCollisions(potentiallyColliding);
-  if(collisions.length > 0) player.hit();
+  if(collisions.length > 0) {
+    player.hit();
+    resourceManager.hit.play();
+  }
 }
 
 /**
@@ -127,9 +142,6 @@ function handleAsteroidsCollisions() {
   var collisions = determineCollisions(potentiallyColliding);
 
   collisions.forEach(function(pair) {
-
-    pair.a.color = "green";
-    pair.b.color = "green";
 
     // find the normal of collision
     var collisionNormal = {
@@ -164,8 +176,15 @@ function handleAsteroidsCollisions() {
     pair.b.velocity.x = b.x;
     pair.b.velocity.y = b.y;
   });
+
+  if(collisions.length > 0) resourceManager.collision.play();
 }
 
+/**
+ * @function handleAsteroidShotCollisions
+ * Goes over all asteroids and shots and solves all their collisions
+ * if there is any
+ */
 function handleAsteroidShotCollisions() {
   var shotsCnt = this.shots.length;
   var asteroidsCnt = this.asteroids.length;
@@ -199,9 +218,14 @@ function handleAsteroidShotCollisions() {
     pair.a.position = {x: INVALID_POSITION, y: INVALID_POSITION};
     var newAsteroids = pair.b.hit();
 
-    if(newAsteroids.length > 0) self.player.addPoints(pair.b.getPoints());
+    if(pair.b.lives == 0) {
+      self.player.addPoints(pair.b.getPoints());
+      resourceManager.explosion.play();
+    }
+
     for(var i = 0; i < newAsteroids.length; i++) self.asteroids.push(newAsteroids[i]);
   });
+
 }
 
 /**
